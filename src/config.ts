@@ -3,7 +3,6 @@ import { join } from 'node:path';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 export const configDir = process.platform === 'win32' ? process.env.APPDATA || join(homedir(), 'AppData/Roaming') : process.env.XDG_CONFIG_HOME || join(homedir(), '.config');
 export const settingsFile = join(configDir, 'launchpad/settings.json');
-export const FRIENDS_URL = 'https://friends.monkeforge.org';
 export interface Settings { accent: string; channels: Record<string, string>; exitToTray: boolean; openOnStartup: boolean }
 export const defaults: Settings = { accent: '#dc5c3b', channels: {}, exitToTray: true, openOnStartup: true };
 export function normalizeSettings(saved: Partial<Settings>, platform = process.platform): Settings {

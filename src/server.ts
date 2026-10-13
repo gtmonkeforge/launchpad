@@ -1,8 +1,9 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { Connector, validateComputer } from './connector';
 import { MonkeForge } from './api';
 import { ModManager } from './mods';
-import { atomicJson, configDir, defaults, FRIENDS_URL, normalizeSettings, readJson, settingsFile, type Settings } from './config';
+import { atomicJson, configDir, defaults, normalizeSettings, readJson, settingsFile, type Settings } from './config';
 import { registerStartup, type LaunchCommand } from './startup';
 import { installedLoaderVersion } from './loader';
 import { loadAssets } from './assets';
@@ -11,29 +12,40 @@ const api = new MonkeForge();
 const launchCommandPromise = new Promise<LaunchCommand>(resolve => { self.onmessage = event => resolve(event.data.launchCommand); });
 await api.restoreSession();
 const saved = await readJson<Settings>(settingsFile, { ...defaults, channels: {} });
-// Ignore legacy configurable friends URLs; this is now a first-party endpoint.
 const settings = normalizeSettings(saved);
 const launchCommand = await launchCommandPromise;
 const selected = await readJson(join(configDir, 'mforge.json'), { path: '' });
 const mods = new ModManager(api, selected.path || await discoverGame());
 const secret = crypto.randomUUID();
-let friendsToken = '', launchAt = 0, launchError = '', running = false;
+let launchAt = 0, launchError = '', running = false;
 let lastStatus = 0;
 const assets = await loadAssets();
+const connector = new Connector();
+await connector.publishDiscovery(mods.game);
+let socialPolling = false;
 async function friends(path: string, options: RequestInit = {}) {
   if (!api.user) throw new Error('Sign in with MonkeForge to use Friends');
-  if (!friendsToken) {
-    const response = await fetch(`${FRIENDS_URL}/v1/auth/monkeforge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_cookie: api.cookie }), signal: AbortSignal.timeout(10000), redirect: 'error' });
-    const data = await response.json() as any;
-    if (!response.ok) throw new Error(data.detail || 'Friends server sign-in failed');
-    friendsToken = data.token;
-  }
-  const response = await fetch(`${FRIENDS_URL}/v1${path}`, { ...options, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${friendsToken}` }, signal: AbortSignal.timeout(10000), redirect: 'error' });
-  const data = await response.json() as any;
-  if (response.status === 401) friendsToken = '';
-  if (!response.ok) throw new Error(data.detail || 'Friends request failed');
-  return data;
+  const target = path === '/requests' ? '/friends/requests' : path;
+  return api.json('/api/v1' + target, { ...options, headers:{'Content-Type':'application/json'} });
 }
+async function socialPoll() {
+  if (socialPolling) return; socialPolling = true;
+  try {
+    if (!api.user) return;
+    const userId=api.user.id;
+    await friends('/presence',{method:'PUT',body:JSON.stringify({room_code:connector.room})});
+    if (connector.connected) {
+      const result=await api.json('/api/v1/notifications');
+      for (const notification of result.items) {
+        if (api.user?.id !== userId) return;
+        await connector.notify({ ...notification,accent:settings.accent });
+        await friends('/notifications/read',{method:'POST',body:JSON.stringify({through:notification.id})});
+      }
+    }
+  } catch {} finally { socialPolling=false; }
+}
+setInterval(() => void socialPoll(), 10000);
+void socialPoll();
 const server = Bun.serve({ hostname: '127.0.0.1', port: Number(process.env.LAUNCHPAD_PORT || 0), fetch: async request => {
   const url = new URL(request.url);
   if (url.host !== `127.0.0.1:${server.port}`) return new Response('Invalid host', { status: 403 });
@@ -55,7 +67,7 @@ const server = Bun.serve({ hostname: '127.0.0.1', port: Number(process.env.LAUNC
         result = await api.json(path);
       } else if (request.method === 'POST' && url.pathname === '/api/login') { await openExternal(api.startLogin()); result = { ok: true }; }
       else if (request.method === 'POST' && url.pathname === '/api/cancel-login') { api.cancelLogin(); result = { ok: true }; }
-      else if (request.method === 'POST' && url.pathname === '/api/logout') { if (friendsToken) await friends('/logout', { method: 'POST' }).catch(() => {}); await api.logout(); friendsToken = ''; result = { ok: true }; }
+      else if (request.method === 'POST' && url.pathname === '/api/logout') { if (api.user) await friends('/presence',{method:'PUT',body:JSON.stringify({room_code:null})}).catch(()=>{}); await api.logout(); result = { ok: true }; }
       else if (request.method === 'POST' && url.pathname === '/api/install') {
         result = await mods.install(String(body.guid), String(body.channel || 'stable'));
         settings.channels[result.guid] = body.channel || 'stable'; await atomicJson(settingsFile, settings);
@@ -80,9 +92,18 @@ const server = Bun.serve({ hostname: '127.0.0.1', port: Number(process.env.LAUNC
         const rollback = body.openOnStartup !== undefined ? await registerStartup(next.openOnStartup, launchCommand) : null;
         try { await atomicJson(settingsFile, next); } catch (error) { await rollback?.(); throw error; }
         Object.assign(settings, next);
-        if (body.game !== undefined) { mods.game = String(body.game); await atomicJson(join(configDir, 'mforge.json'), { ...selected, path: mods.game }); }
+        if (body.game !== undefined) { mods.game = String(body.game); await atomicJson(join(configDir, 'mforge.json'), { ...selected, path: mods.game }); await connector.publishDiscovery(mods.game); }
         result = { ok: true };
       } else if (request.method === 'POST' && url.pathname === '/api/open') { await openExternal(String(body.url)); result = { ok: true }; }
+      else if (url.pathname === '/api/computer' && request.method === 'GET') { if (connector.connected) await connector.command('computer-get', {}); result = { connected:connector.connected, settings:connector.settings }; }
+      else if (url.pathname === '/api/computer' && request.method === 'POST') result = await connector.command('computer-set', validateComputer(body));
+      else if (url.pathname === '/api/social' && request.method === 'POST') {
+        if (!api.user) throw new Error('Sign in with MonkeForge');
+        if (typeof body.path !== 'string' || !/^\/api\/v1\/(friends(?:\/requests|\/[^/?]+)?|presence|groups(?:\/[^/?]+\/members(?:\/[^/?]+)?)?|users\/[^/?]+|chat(?:\/[^/?]+\/(?:messages|accept|decline))?)(?:\?before=[0-9]+)?$/.test(body.path) || !['GET','POST','PUT','DELETE'].includes(body.method)) throw new Error('Unsupported social endpoint');
+        const data=body.data;
+        if (body.path === '/api/v1/presence' && ['friends','none'].includes(data?.visibility)) { result=await friends('/presence',{method:'PUT',body:JSON.stringify({room_code:connector.room,visibility:data.visibility})}); }
+        else result=await api.json(body.path,{method:body.method,headers:{'Content-Type':'application/json'},...(body.method==='GET'?{}:{body:JSON.stringify(data || {})})});
+      }
       else if (url.pathname === '/api/friends') result = await friends('/friends');
       else if (request.method === 'POST' && url.pathname === '/api/friend-request') result = await friends('/requests', { method: 'POST', body: JSON.stringify({ user_id: body.user_id }) });
       else if (request.method === 'POST' && url.pathname === '/api/friend-action') {
