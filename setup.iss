@@ -3,7 +3,7 @@
 ; Non-commercial use only.
 
 #define MyAppName "Launchpad"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "MonkeForge"
 #define MyAppURL "https://monkeforge.org/app"
 #define MyAppExeName "launchpad-win64.exe"

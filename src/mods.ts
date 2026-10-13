@@ -125,6 +125,7 @@ export class ModManager {
     for (const name of Object.keys(entries)) if (!/^(BepInEx\/|winhttp\.dll$|doorstop_config\.ini$|\.doorstop_version$|changelog\.txt$)/i.test(name.replace(/\\/g, '/'))) throw new Error('Unexpected BepInEx package content');
     await this.transaction({ guid: 'bepinex', name: 'BepInEx', version, files: [], folders: [] }, entries, false, true);
   }
+  
   async install(guid: string, channel = 'stable') {
     return this.locked(async () => {
       await configureProton();
@@ -149,6 +150,7 @@ export class ModManager {
       return { guid: mod.guid, version: release.version };
     });
   }
+
   async uninstall(guid: string) {
     return this.locked(async () => {
       if (guid === 'bepinex') throw new Error('BepInEx is required by installed mods');

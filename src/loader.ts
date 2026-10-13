@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-/** Read the Assembly version from managed PE metadata without invoking native tools. */
+
 export function assemblyVersion(bytes: Uint8Array): string | null {
   try {
     const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);

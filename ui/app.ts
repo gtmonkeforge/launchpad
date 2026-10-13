@@ -120,13 +120,12 @@ function renderInstalled() {
 }
 async function install(guid: string, channel: string, ask = true) {
   if (pending) throw new Error('An installation is already in progress');
-  if (ask && !await confirm('Install this release?', 'Launchpad will verify the download, install or update BepInEx, and save the mod to your Steam game folder.')) return;
   pending = true;
   try { await syncWindowPreferences(state.settings, true); await request('/api/install', { guid, channel }); await refresh(); toast('Mod installed successfully.'); }
   finally { pending = false; await syncWindowPreferences(state.settings, false); }
   if (currentPage === 'mods' && modTab === 'installed') void renderMods();
 }
-// Treat even server-rendered Markdown as untrusted at the local application boundary.
+
 function safeHtml(html: string) {
   const template = document.createElement('template'); template.innerHTML = html;
   const allowed = new Set('P H1 H2 H3 H4 H5 H6 UL OL LI STRONG EM DEL BR HR PRE CODE BLOCKQUOTE TABLE THEAD TBODY TR TD TH A IMG'.split(' '));
