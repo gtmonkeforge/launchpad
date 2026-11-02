@@ -56,9 +56,9 @@ export function assemblyVersion(bytes: Uint8Array): string | null {
     return [u16(p + 4), u16(p + 6), u16(p + 8), u16(p + 10)].join('.');
   } catch { return null; }
 }
-export async function installedLoaderVersion(game: string, recorded?: string) {
+export async function installedLoaderVersion(game: string, recorded?: string, loader: import('./types').ModLoader = 'bepinex5') {
   if (!game) return null;
-  const bytes = await readFile(join(game, 'BepInEx/core/BepInEx.dll')).catch(() => null);
+  const bytes = await readFile(join(game, loader === 'melonloader' ? 'MelonLoader/net6/MelonLoader.dll' : 'BepInEx/core/BepInEx.dll')).catch(() => null);
   if (!bytes) return null;
   return recorded?.replace(/^v/, '') || assemblyVersion(bytes);
 }

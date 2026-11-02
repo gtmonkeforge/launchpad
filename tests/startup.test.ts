@@ -6,11 +6,12 @@ import { defaults, normalizeSettings } from '../src/config';
 import { desktopQuote, registerStartup, startupContent, windowsQuote } from '../src/startup';
 const temp = await mkdtemp(join(tmpdir(), 'launchpad-startup-tests-'));
 afterAll(() => rm(temp, { recursive: true, force: true }));
-test('missing preferences default to enabled while saved choices and Linux tray restrictions are preserved', () => {
+test('missing preferences default to enabled while saved choices and Linux tray preferences are preserved', () => {
   expect(normalizeSettings({ accent: '#abcdef' }, 'win32')).toEqual({ ...defaults, accent: '#abcdef' });
   expect(normalizeSettings({ exitToTray: false, openOnStartup: false }, 'win32')).toEqual({ ...defaults, exitToTray: false, openOnStartup: false });
-  expect(normalizeSettings({}, 'linux')).toEqual({ ...defaults, exitToTray: false });
-  expect(normalizeSettings({ ...defaults, exitToTray: true, openOnStartup: true }, 'linux')).toEqual({ ...defaults, exitToTray: false, openOnStartup: true });
+  expect(normalizeSettings({}, 'linux')).toEqual(defaults);
+  expect(normalizeSettings({ exitToTray: false }, 'linux').exitToTray).toBe(false);
+  expect(normalizeSettings({ ...defaults, exitToTray: true, openOnStartup: true }, 'linux')).toEqual({ ...defaults, exitToTray: true, openOnStartup: true });
 });
 test('Windows startup launches the native app hidden from the console, preserving arguments', () => {
   const content = startupContent('win32', { executable: 'C:\\Program Files\\Bun\\bun.exe', args: ['C:\\My App\\index.ts'] });

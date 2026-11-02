@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% if legal_page %}{{ legal_page }} - MonkeForge{% else %}MonkeForge{% endif %}</title>
+    <meta name="description"
+        content="Browse and share Gorilla Tag mods. Discover releases, screenshots, and source code.">
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/settings.js" defer></script>
+    <script src="/static/admin.js" defer></script>
+    <script src="/static/app.js" defer></script>
+</head>
+
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="brand" href="/browse"><span class="brand-mark"
+                    aria-hidden="true"></span><span>MonkeForge</span></a>
+            <nav aria-label="Main navigation"><a href="/browse" id="nav-browse">Browse</a><a href="/upload"
+                    id="nav-upload">Publish</a><a href="/settings" id="nav-settings">Settings</a></nav>
+            <div class="header-actions"><a class="button subtle" href="/app" id="get-app">Get the app</a>
+                <div id="account" class="account"><a class="button subtle" href="/auth/discord?next=/browse">Sign in
+                        with Discord</a></div>
+            </div>
+        </div>
+    </header>
+    <main id="app" tabindex="-1">{% if server_error %}<section class="empty">
+            <h1>Something went wrong</h1>
+            <p>{{server_error}}</p><a class="button" href="/browse">Back to browse</a>
+        </section>{% elif shield_report %}{% include "monkeshield.html" %}{% elif legal_page %}{% include "legal.html"
+        %}{% else %}<div class="loading" role="status">Loading mods…</div>{% endif %}</main>
+    <footer>
+        <div><a class="footer-brand" href="/browse">MonkeForge</a><span id="footer-message">MonkeForge</span></div>
+        <div class="footer-info">
+            <div class="footer-links" aria-label="Legal"><a href="/terms">Terms of Service</a><a href="/privacy">Privacy
+                    Policy</a></div><span>Community made. Not affiliated with Another Axiom.</span>
+        </div>
+    </footer>
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+
+</html>

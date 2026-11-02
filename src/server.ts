@@ -1,5 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { loaderProxy, loaderRecord } from './mod-loaders';
+import { PluginSecurity } from './security';
 import { Connector, validateComputer } from './connector';
 import { MonkeForge } from './api';
 import { ModManager } from './mods';
@@ -16,6 +18,7 @@ const settings = normalizeSettings(saved);
 const launchCommand = await launchCommandPromise;
 const selected = await readJson(join(configDir, 'mforge.json'), { path: '' });
 const mods = new ModManager(api, selected.path || await discoverGame());
+const security = new PluginSecurity();
 const secret = crypto.randomUUID();
 let launchAt = 0, launchError = '', running = false;
 let lastStatus = 0;
@@ -55,32 +58,42 @@ const server = Bun.serve({ hostname: '127.0.0.1', port: Number(process.env.LAUNC
       const body = request.method === 'POST' ? await request.json() as any : {};
       let result: any;
       if (request.method === 'GET' && url.pathname === '/api/state') {
+        if (!mods.busy) void security.scanIfNeeded(mods.game, () => !mods.busy, settings.loader);
         if (Date.now() - lastStatus > 2500) { running = await gameRunning(); lastStatus = Date.now(); }
         if (running) { launchAt = 0; launchError = ''; }
         if (launchAt && Date.now() - launchAt > 60000) { launchAt = 0; launchError = 'Steam did not start the game within one minute. Check Steam and try again.'; }
         const installed = (await mods.manifest()).installed;
-        const loaderVersion = await installedLoaderVersion(mods.game, installed.find(m => m.guid === 'bepinex')?.version);
-        result = { game: mods.game, platform: process.platform, running, launching: !!launchAt, launchError, loaderVersion, installed, operation: mods.status, busy: mods.busy, settings, user: api.user, loginStatus: api.loginStatus };
+        const loaderVersion = await installedLoaderVersion(mods.game, installed.find(m => m.guid === loaderRecord(settings.loader))?.version, settings.loader);
+        result = { game: mods.game, platform: process.platform, running, launching: !!launchAt, launchError, loaderVersion, installed, security: { scanning: security.state.scanning, startedAt: security.state.startedAt, finishedAt: security.state.finishedAt, current: security.state.current, processed: security.state.files.length, total: security.state.total, error: security.state.error }, operation: mods.status || (security.state.scanning ? 'Scanning plugins with MonkeShield…' : ''), busy: mods.busy || security.state.scanning, settings, user: api.user, loginStatus: api.loginStatus };
+      } else if (request.method === 'GET' && url.pathname === '/api/security') { result = security.state;
+      } else if (request.method === 'POST' && url.pathname === '/api/security/scan') {
+        if (mods.busy) throw new Error('Wait for mod installation to finish');
+        if (!mods.game) throw new Error('Select your Gorilla Tag game folder in Settings first');
+        if (security.state.scanning) throw new Error('A MonkeShield scan is already running');
+        void security.scan(mods.game, settings.loader); result = { ok: true };
       } else if (request.method === 'GET' && url.pathname === '/api/catalog') {
         const path = url.searchParams.get('path') || '/api/v1/mods';
-        if (!/^\/api\/v1\/(mods(?:\/[^/?]+(?:\/(ratings|comments))?)?|users\/[^/?]+)(\?|$)/.test(path)) throw new Error('Unsupported catalog endpoint');
+        if (!/^\/api\/v1\/(mods(?:\/[^/?]+(?:\/(ratings|comments|monkeshield-report))?)?|users\/[^/?]+)(\?|$)/.test(path)) throw new Error('Unsupported catalog endpoint');
         result = await api.json(path);
       } else if (request.method === 'POST' && url.pathname === '/api/login') { await openExternal(api.startLogin()); result = { ok: true }; }
       else if (request.method === 'POST' && url.pathname === '/api/cancel-login') { api.cancelLogin(); result = { ok: true }; }
       else if (request.method === 'POST' && url.pathname === '/api/logout') { if (api.user) await friends('/presence',{method:'PUT',body:JSON.stringify({room_code:null})}).catch(()=>{}); await api.logout(); result = { ok: true }; }
       else if (request.method === 'POST' && url.pathname === '/api/install') {
-        result = await mods.install(String(body.guid), String(body.channel || 'stable'));
+        if (security.state.scanning) throw new Error('Wait for the MonkeShield scan to finish');
+        result = await mods.install(String(body.guid), String(body.channel || 'stable'), settings.loader);
         settings.channels[result.guid] = body.channel || 'stable'; await atomicJson(settingsFile, settings);
-      } else if (request.method === 'POST' && url.pathname === '/api/uninstall') { await mods.uninstall(String(body.guid)); result = { ok: true }; }
+        if (body.scan !== false && !security.state.scanning) await security.scan(mods.game, settings.loader);
+      } else if (request.method === 'POST' && url.pathname === '/api/uninstall') { if (security.state.scanning) throw new Error('Wait for the MonkeShield scan to finish'); await mods.uninstall(String(body.guid)); security.reset(); result = { ok: true }; }
       else if (request.method === 'POST' && url.pathname === '/api/launch') {
         if (!mods.game) throw new Error('Select your Steam game folder in Settings');
-        if (mods.busy) throw new Error('Wait for mod installation to finish');
-        if (!await gameRunning()) { launchAt = Date.now(); launchError = ''; try { await openExternal(`steam://rungameid/${APP_ID}`); } catch (e) { launchAt = 0; throw e; } }
+        if (mods.busy || security.state.scanning) throw new Error('Wait for the current operation to finish');
+        if (!await gameRunning()) { await mods.prepareLoader(settings.loader); launchAt = Date.now(); launchError = ''; try { await openExternal(`steam://rungameid/${APP_ID}`); } catch (e) { launchAt = 0; throw e; } }
         result = { ok: true };
-      } else if (request.method === 'POST' && url.pathname === '/api/proton') { await configureProton(); result = { ok: true }; }
+      } else if (request.method === 'POST' && url.pathname === '/api/proton') { result = { ok: true, ...await configureProton(undefined, undefined, loaderProxy(settings.loader)) }; }
       else if (request.method === 'POST' && url.pathname === '/api/settings') {
-        if (mods.busy) throw new Error('Wait for the current mod operation');
+        if (mods.busy || security.state.scanning) throw new Error('Wait for the current mod operation or scan');
         const next = { ...settings };
+        if (body.loader !== undefined) { if (!['bepinex5', 'melonloader'].includes(body.loader)) throw new Error('Unsupported mod loader'); next.loader = body.loader; }
         if (body.game !== undefined) {
           if (!existsSync(join(String(body.game), 'Gorilla Tag.exe'))) throw new Error('This folder does not contain Gorilla Tag.exe');
         }
@@ -88,11 +101,12 @@ const server = Bun.serve({ hostname: '127.0.0.1', port: Number(process.env.LAUNC
         for (const key of ['exitToTray', 'openOnStartup'] as const) {
           if (body[key] !== undefined) { if (typeof body[key] !== 'boolean') throw new Error(`${key} must be a boolean`); next[key] = body[key]; }
         }
-        if (next.exitToTray && process.platform !== 'win32') throw new Error('Exit to tray is available only on Windows');
+        if (next.exitToTray && !['win32', 'linux'].includes(process.platform)) throw new Error('Exit to tray is unavailable on this platform');
         const rollback = body.openOnStartup !== undefined ? await registerStartup(next.openOnStartup, launchCommand) : null;
         try { await atomicJson(settingsFile, next); } catch (error) { await rollback?.(); throw error; }
+        if (next.loader !== settings.loader) security.reset();
         Object.assign(settings, next);
-        if (body.game !== undefined) { mods.game = String(body.game); await atomicJson(join(configDir, 'mforge.json'), { ...selected, path: mods.game }); await connector.publishDiscovery(mods.game); }
+        if (body.game !== undefined) { mods.game = String(body.game); security.reset(); await atomicJson(join(configDir, 'mforge.json'), { ...selected, path: mods.game }); await connector.publishDiscovery(mods.game); }
         result = { ok: true };
       } else if (request.method === 'POST' && url.pathname === '/api/open') { await openExternal(String(body.url)); result = { ok: true }; }
       else if (url.pathname === '/api/computer' && request.method === 'GET') { if (connector.connected) await connector.command('computer-get', {}); result = { connected:connector.connected, settings:connector.settings }; }
@@ -127,4 +141,5 @@ const server = Bun.serve({ hostname: '127.0.0.1', port: Number(process.env.LAUNC
     return new Response('Not found', { status: 404 });
   } catch (error) { return Response.json({ error: error instanceof Error ? error.message : 'Request failed' }, { status: 400 }); }
 }});
+void security.scanIfNeeded(mods.game, () => !mods.busy, settings.loader);
 postMessage({ url: server.url.href });

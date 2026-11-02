@@ -1,6 +1,6 @@
 {
   "name": "launchpad",
-  "version": "1.1.0",
+  "version": "1.3.0",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -12,7 +12,12 @@
     "build:tux64": "bun scripts/build.ts tux64",
     "build:verify": "bun scripts/verify-build.ts",
     "typecheck": "bun check",
-    "test": "bun test"
+    "test": "bun test",
+    "package": "bun scripts/package.ts",
+    "package:win64": "bun scripts/package.ts win64",
+    "package:tux64": "bun scripts/package.ts tux64",
+    "package:verify": "bun scripts/verify-packages.ts",
+    "tray:verify": "bun scripts/verify-linux-tray.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

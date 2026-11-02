@@ -36,13 +36,13 @@ worker.onmessage = async ({ data }) => {
   const { createWindowControls } = await import('./src/window');
   const controls = createWindowControls(view.unsafeWindowHandle);
   let tray: import('./src/tray').TrayController | null = null;
-  if (process.platform === 'win32') {
-    const { createWindowsTray } = await import('./src/tray');
+  if (process.platform === 'win32' || process.platform === 'linux') {
+    const createTray = process.platform === 'win32' ? (await import('./src/tray')).createWindowsTray : (await import('./src/linux-tray')).createLinuxTray;
     const alpha = (await loadAssets()).trayMask;
-    tray = createWindowsTray(view.unsafeWindowHandle, alpha, { exitToTray: false, busy: false, accent: preferences.accent }, message => {
-      view.eval(`window.dispatchEvent(new CustomEvent('launchpad-native-error', {detail:${JSON.stringify(message)}}))`);
-    });
     try {
+      tray = createTray(view.unsafeWindowHandle, alpha, { exitToTray: false, busy: false, accent: preferences.accent }, message => {
+        view.eval(`window.dispatchEvent(new CustomEvent('launchpad-native-error', {detail:${JSON.stringify(message)}}))`);
+      });
       tray.update({ exitToTray: preferences.exitToTray, busy: false, accent: preferences.accent });
       if (process.argv.includes('--startup') && preferences.exitToTray) tray.hide();
     } catch (error) { console.error(error); }
