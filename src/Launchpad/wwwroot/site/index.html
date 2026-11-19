@@ -1,0 +1,29 @@
+<!--
+ OpenForge is (C) 2026 MonkeForge under the GNU LGPL 3.0.
+ -->
+ 
+<!DOCTYPE html>
+<html lang="en" class="{{brandClass}}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{title}}</title>
+    <meta name="description" content="{{description}}">
+{{head}}    <meta name="color-scheme" content="dark">
+    <link rel="icon" href="/brand/favicon">
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script id="boot" type="application/json">{{boot}}</script>
+    <script type="module" src="/static/js/main.js"></script>
+</head>
+<body>
+    <a class="skip-link" href="#app">Skip to content</a>
+    <header class="site-header" id="site-header">
+        <div class="header-inner">
+            <a class="brand" href="/browse"><span class="brand-mark" aria-hidden="true"></span><span>{{brand}}</span></a>
+        </div>
+    </header>
+    <main id="app" tabindex="-1">{{content}}</main>
+    <footer class="site-footer" id="site-footer"></footer>
+    <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+</body>
+</html>

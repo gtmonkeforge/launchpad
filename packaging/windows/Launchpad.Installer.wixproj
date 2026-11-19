@@ -1,0 +1,17 @@
+<Project Sdk="WixToolset.Sdk/6.0.2">
+
+  <PropertyGroup>
+    <OutputName>launchpad-$(Version)-windows-x64</OutputName>
+    <Platform>x64</Platform>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <PublishDir Condition="'$(PublishDir)' == ''">$(MSBuildThisFileDirectory)..\..\obj\package\win-x64\</PublishDir>
+    <LicenseRtf Condition="'$(LicenseRtf)' == ''">$(MSBuildThisFileDirectory)..\..\obj\package\License.rtf</LicenseRtf>
+    <DefineConstants>Version=$(Version);PublishDir=$(PublishDir);LicenseRtf=$(LicenseRtf);RepoRoot=$(MSBuildThisFileDirectory)..\..\</DefineConstants>
+    <SuppressIces>ICE38;ICE64;ICE91</SuppressIces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="6.0.2" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="6.0.2" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Launchpad</AssemblyName>
+    <RootNamespace>Launchpad</RootNamespace>
+    <ApplicationIcon>launchpad.ico</ApplicationIcon>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Photino.NET" Version="4.0.16" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Launchpad.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../Launchpad.Injector/Shared/Wire.cs" Link="Injector/Wire.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot/**" LogicalName="wwwroot/$([System.String]::Copy('%(RecursiveDir)').Replace('\', '/'))%(Filename)%(Extension)" />
+    <EmbeddedResource Include="launchpad.ico" LogicalName="launchpad.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InjectorPlugin Include="../Launchpad.Injector/BepInEx/MonkeForge.Injector.BepInEx.csproj" />
+    <InjectorPlugin Include="../Launchpad.Injector/MelonLoader/MonkeForge.Injector.MelonLoader.csproj" />
+  </ItemGroup>
+
+  <Target Name="EmbedInjectorPlugins" BeforeTargets="AssignTargetPaths">
+    <MSBuild Projects="@(InjectorPlugin)" Targets="Restore" Properties="Configuration=$(Configuration);_LaunchpadPluginRestore=true" RemoveProperties="RuntimeIdentifier;SelfContained;PublishSingleFile;PublishReadyToRun;IncludeNativeLibrariesForSelfExtract;_IsPublishing" />
+    <MSBuild Projects="@(InjectorPlugin)" Targets="Build" Properties="Configuration=$(Configuration)" RemoveProperties="RuntimeIdentifier;SelfContained;PublishSingleFile;PublishReadyToRun;IncludeNativeLibrariesForSelfExtract;_IsPublishing">
+      <Output TaskParameter="TargetOutputs" ItemName="_InjectorPluginOutput" />
+    </MSBuild>
+    <ItemGroup>
+      <EmbeddedResource Include="@(_InjectorPluginOutput)" LogicalName="injector/%(Filename)%(Extension)" />
+    </ItemGroup>
+  </Target>
+</Project>

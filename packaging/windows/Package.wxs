@@ -1,0 +1,54 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package Name="MonkeForge Launchpad" Manufacturer="MonkeForge" Version="$(Version)" UpgradeCode="5783C353-0388-4BBD-B657-F64067A369FA" Scope="perUser" Compressed="yes">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of MonkeForge Launchpad is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="launchpad.ico" SourceFile="$(RepoRoot)src\Launchpad\launchpad.ico" />
+    <Property Id="ARPPRODUCTICON" Value="launchpad.ico" />
+    <Property Id="ARPURLINFOABOUT" Value="https://monkeforge.org/software/launchpad" />
+    <Property Id="ARPNOREPAIR" Value="1" />
+    <Property Id="DISABLEADVTSHORTCUTS" Value="1" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="MonkeForge Launchpad" />
+      </Directory>
+    </StandardDirectory>
+
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Component Id="LaunchpadExe">
+        <File Id="LaunchpadExe" Source="$(PublishDir)Launchpad.exe" />
+        <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
+      </Component>
+      <Component Id="License">
+        <File Id="License" Source="$(RepoRoot)LICENSE.md" />
+      </Component>
+      <Files Include="$(PublishDir)**">
+        <Exclude Files="$(PublishDir)Launchpad.exe" />
+      </Files>
+    </ComponentGroup>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcut">
+        <Shortcut Id="StartMenuShortcut" Name="MonkeForge Launchpad" Description="Browse MonkeForge and manage your mods" Target="[INSTALLFOLDER]Launchpad.exe" WorkingDirectory="INSTALLFOLDER" Icon="launchpad.ico" />
+        <RegistryValue Root="HKCU" Key="Software\MonkeForge\Launchpad" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <Feature Id="Launchpad">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+
+    <WixVariable Id="WixUILicenseRtf" Value="$(LicenseRtf)" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Open MonkeForge Launchpad" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <Property Id="WixShellExecTarget" Value="[#LaunchpadExe]" />
+    <CustomAction Id="OpenLaunchpad" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixShellExec" Impersonate="yes" />
+
+    <UI>
+      <ui:WixUI Id="WixUI_Minimal" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="OpenLaunchpad" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed" />
+    </UI>
+  </Package>
+</Wix>

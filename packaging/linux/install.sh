@@ -10,21 +10,28 @@ data_dir=${XDG_DATA_HOME:-"$HOME/.local/share"}
 app_dir="$data_dir/monkeforge-launchpad"
 applications_dir="$data_dir/applications"
 icon_dir="$data_dir/icons/hicolor/scalable/apps"
-mkdir -p -- "$app_dir" "$applications_dir" "$icon_dir"
-install -m 755 -- "$source_dir/launchpad-tux64" "$app_dir/launchpad-tux64.new"
-mv -f -- "$app_dir/launchpad-tux64.new" "$app_dir/launchpad-tux64"
-install -m 755 -- "$source_dir/uninstall.sh" "$app_dir/uninstall.sh"
-install -m 644 -- "$source_dir/LICENSE.md" "$app_dir/LICENSE.md"
-install -m 644 -- "$source_dir/monkeforge-launchpad.svg" "$icon_dir/monkeforge-launchpad.svg"
-exec_path=$(printf '%s' "$app_dir/launchpad-tux64" | sed -e 's/%/%%/g' -e 's/["`$\\]/\\&/g' -e 's/\\/\\\\/g')
+[[ -f $source_dir/Launchpad ]] || { echo "Launchpad wasn't found next to install.sh. Run it from the extracted archive." >&2; exit 1; }
+if [[ $source_dir != "$app_dir" ]]; then
+    staging="$app_dir.new"
+    rm -rf -- "$staging"
+    mkdir -p -- "$staging"
+    cp -a -- "$source_dir/." "$staging/"
+    rm -f -- "$staging/install.sh"
+    if [[ -f $app_dir/Launchpad ]]; then rm -rf -- "$app_dir"; fi
+    mv -- "$staging" "$app_dir"
+fi
+chmod 755 -- "$app_dir/Launchpad" "$app_dir/uninstall.sh"
+mkdir -p -- "$applications_dir" "$icon_dir"
+install -m 644 -- "$app_dir/monkeforge-launchpad.svg" "$icon_dir/monkeforge-launchpad.svg"
+exec_path=$(printf '%s' "$app_dir/Launchpad" | sed -e 's/%/%%/g' -e 's/["`$\\]/\\&/g' -e 's/\\/\\\\/g')
 cat > "$applications_dir/monkeforge-launchpad.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
 Version=1.0
 Name=MonkeForge Launchpad
-Comment=Launch Gorilla Tag and manage your MonkeForge mods
-Exec=/usr/bin/env -- "$exec_path"
-Icon=$icon_dir/monkeforge-launchpad.svg
+Comment=Browse MonkeForge and manage your mods
+Exec="$exec_path"
+Icon=monkeforge-launchpad
 Terminal=false
 Categories=Game;Utility;
 StartupNotify=true
