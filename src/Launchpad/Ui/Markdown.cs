@@ -195,12 +195,11 @@ public static partial class Markdown
 
     private static double PlaceCode(MarkdownLayout layout, List<string> lines, double y, double width)
     {
-        var lineHeight = 20.0;
-        var height = lines.Count * lineHeight + 20;
+        var height = lines.Count * 20.0 + 20;
         layout.Boxes.Add(new MarkdownBox(0, y, width, height, Palette.Bg));
 
         for (var i = 0; i < lines.Count; i++)
-            layout.Words.Add(new MarkdownWord(12, y + 10 + i * lineHeight + lineHeight / 2, Chrome.Clip(Fonts.Mono, 13, lines[i], width - 24), Fonts.Mono, 13, Palette.Muted, false, null, 0));
+            layout.Words.Add(new MarkdownWord(12, y + 10 + i * 20.0 + 10, Chrome.Clip(Fonts.Mono, 13, lines[i], width - 24), Fonts.Mono, 13, Palette.Muted, false, null, 0));
 
         return y + height;
     }

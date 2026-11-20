@@ -2,8 +2,6 @@ namespace Launchpad.Ui;
 
 public sealed partial class FilePicker
 {
-    private const int MaxEntries = 2000;
-
     private readonly List<Entry> _entries = [];
     private string _folder = "";
 
@@ -32,10 +30,8 @@ public sealed partial class FilePicker
                 entries.Add(new Entry(directory.Name, directory.FullName, true, 0));
 
             if (!_foldersOnly)
-            {
-                foreach (var file in info.EnumerateFiles().Where(Wanted).OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase))
+                foreach (var file in info.EnumerateFiles().Where(f => !f.Name.StartsWith('.') && (_extensions.Length == 0 || _extensions.Contains(f.Extension.ToLowerInvariant()))).OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase))
                     entries.Add(new Entry(file.Name, file.FullName, false, file.Length));
-            }
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
         {
@@ -47,12 +43,7 @@ public sealed partial class FilePicker
         _folder = folder;
         _typed = folder;
         _entries.Clear();
-        _entries.AddRange(entries.Take(MaxEntries));
-    }
-
-    private bool Wanted(FileInfo file)
-    {
-        return !file.Name.StartsWith('.') && (_extensions.Length == 0 || _extensions.Contains(file.Extension.ToLowerInvariant()));
+        _entries.AddRange(entries.Take(2000));
     }
 
     private void GoToTyped()
@@ -66,8 +57,9 @@ public sealed partial class FilePicker
             GoTo(System.IO.Path.GetFullPath(path));
         else if (File.Exists(path) && !_foldersOnly)
         {
-            GoTo(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path))!);
-            Toggle(System.IO.Path.GetFullPath(path));
+            var full = System.IO.Path.GetFullPath(path);
+            GoTo(System.IO.Path.GetDirectoryName(full)!);
+            Toggle(full);
         }
         else
             _problem = "That path doesn't exist.";

@@ -40,16 +40,7 @@ public sealed partial class FilePicker
 
         ui.Label(_foldersOnly ? "Click a folder to open it, then use this folder." : "Click a folder to open it and a file to pick it. You can also type a path.");
         ui.Space(4);
-        DrawBar(ui);
-        ui.Space(6);
-        DrawList(ui);
-        ui.Space(6);
-        DrawFooter(ui);
-        ui.ModalEnd();
-    }
 
-    private void DrawBar(Ui ui)
-    {
         if (ui.Button("Up") && Directory.GetParent(_folder) is { } parent)
             GoTo(parent.FullName);
 
@@ -69,6 +60,26 @@ public sealed partial class FilePicker
             _focus = false;
             GoToTyped();
         }
+
+        ui.Space(6);
+        DrawList(ui);
+        ui.Space(6);
+
+        if (_problem.Length > 0)
+            ui.Label(_problem);
+
+        if (!_foldersOnly)
+            ui.Label(_chosen.Count == 0 ? "Pick a file." : _chosen.Count + (_chosen.Count == 1 ? " file picked." : " files picked."));
+
+        if (ui.Button(_foldersOnly ? "Use this folder" : "Select"))
+            Finish(ui);
+
+        ui.SameLine();
+
+        if (ui.Button("Cancel"))
+            ui.PopupClose();
+
+        ui.ModalEnd();
     }
 
     private void DrawList(Ui ui)
@@ -95,23 +106,6 @@ public sealed partial class FilePicker
         }
 
         ui.ScrollEnd();
-    }
-
-    private void DrawFooter(Ui ui)
-    {
-        if (_problem.Length > 0)
-            ui.Label(_problem);
-
-        if (!_foldersOnly)
-            ui.Label(_chosen.Count == 0 ? "Pick a file." : _chosen.Count + (_chosen.Count == 1 ? " file picked." : " files picked."));
-
-        if (ui.Button(_foldersOnly ? "Use this folder" : "Select"))
-            Finish(ui);
-
-        ui.SameLine();
-
-        if (ui.Button("Cancel"))
-            ui.PopupClose();
     }
 
     private void Finish(Ui ui)
