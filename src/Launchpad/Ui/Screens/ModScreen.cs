@@ -129,11 +129,11 @@ public sealed partial class ModScreen : IScreen
     private double DrawStats(Ui ui, double width, double y)
     {
         var loaders = _mod!["loaders"] is JsonArray list && list.Count > 0 ? list.Count : 1;
-        var updated = Current == null ? "—" : Format.Ago(ParseDate(Current.Str("released_at")));
+        var updated = Current == null ? "-" : Format.Ago(ParseDate(Current.Str("released_at")));
         var cells = new (string Label, string Value)[]
         {
             ("Downloads", Format.Number(_mod.Long("downloads"))),
-            ("Version", _mod.Str("current_version") is { Length: > 0 } version ? version : "—"),
+            ("Version", _mod.Str("current_version") is { Length: > 0 } version ? version : "-"),
             ("Updated", updated),
             ("Loaders", loaders.ToString()),
         };

@@ -59,7 +59,7 @@ public sealed partial class ModScreen
         if (whatsNew.Count > 0)
         {
             Canvas w = ui.Canvas()!;
-            Chrome.BoldText(w, Fonts.Main, 13.5, _ox + left + 20, _oy + yy + 12, "What’s new", Palette.Text);
+            Chrome.BoldText(w, Fonts.Main, 13.5, _ox + left + 20, _oy + yy + 12, "What's new", Palette.Text);
 
             for (var i = 0; i < whatsNew.Count; i++)
                 Chrome.Text(w, Fonts.Main, 13.5, _ox + left + 20, _oy + yy + 38 + i * 21, whatsNew[i], Palette.Muted);
