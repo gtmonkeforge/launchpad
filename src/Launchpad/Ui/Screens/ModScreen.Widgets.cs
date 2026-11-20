@@ -45,9 +45,6 @@ public sealed partial class ModScreen
         return width;
     }
 
-    private void Panel(Canvas c, double x, double y, double width, double height) =>
-        Chrome.Box(c, _ox + x, _oy + y, width, height, Palette.RadiusLarge, Palette.Surface, Palette.Line);
-
     private static List<string> WrapLines(Font font, double size, string text, double width, int maxLines)
     {
         var lines = new List<string>();
