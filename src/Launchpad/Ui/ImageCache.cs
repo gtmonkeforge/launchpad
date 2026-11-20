@@ -22,9 +22,9 @@ public sealed class ImageCache(ForgeClient forge, Action changed)
         {
             try
             {
-                bitmap = Bitmap.Load(bytes);
+                bitmap = ImageDecoder.Decode(bytes);
             }
-            catch (GoomeException)
+            catch (Exception)
             {
                 bitmap = null;
             }
