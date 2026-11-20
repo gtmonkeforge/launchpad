@@ -20,17 +20,8 @@ public sealed class Titlebar(Shell shell)
     private const double GuestMenuWidth = 238;
     private const double SignInWidth = 66;
 
-    private readonly Bitmap _logo = Bitmap.Load(LoadLogo());
     private bool _searchFocusWanted;
     private string? _beforeSlash;
-
-    private static byte[] LoadLogo()
-    {
-        using Stream stream = typeof(Titlebar).Assembly.GetManifestResourceStream("logo.png")!;
-        using var memory = new MemoryStream();
-        stream.CopyTo(memory);
-        return memory.ToArray();
-    }
 
     public void FocusSearch() => _searchFocusWanted = true;
 
@@ -55,7 +46,7 @@ public sealed class Titlebar(Shell shell)
         NavButton(ui, "forward", x + 30, router.CanGoForward, Icons.Forward, router.Forward);
         NavButton(ui, "reload", x + 61, true, Icons.Reload, router.Reload);
 
-        shell.Window.Ui.Canvas()!.DrawBitmap(_logo, 106, 14, 24, 24, 0, Palette.Accent);
+        shell.Window.Ui.Canvas()!.DrawBitmap(Brand.Logo, 106, 14, 24, 24, 0, Palette.Accent);
         x = 140;
 
         foreach (var (name, page) in Tabs)

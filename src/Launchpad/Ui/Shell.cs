@@ -17,6 +17,7 @@ public sealed class Shell
         _bridge = new Bridge(app, _ => Task.FromResult<string?>(null));
         Images = new ImageCache(app.Forge, Invalidate);
         Notifications = new Notifications(this);
+        Footer = new Footer(this);
         Router = new Router(this);
         app.Forge.SessionChanged += Invalidate;
         app.Mods.Changed += Invalidate;
@@ -28,6 +29,7 @@ public sealed class Shell
     public Router Router { get; }
     public ImageCache Images { get; }
     public Notifications Notifications { get; }
+    public Footer Footer { get; }
     public string Search { get; set; } = "";
     public string? Progress { get; private set; }
 

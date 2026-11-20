@@ -46,7 +46,9 @@ public sealed partial class BrowseScreen(Shell shell) : IScreen
         DrawSidebar(ui, TopMargin);
         var bottom = DrawMain(ui, mainLeft, mainWidth, TopMargin);
 
-        ui.Pos(0, Math.Max(bottom, SidebarBottom) + 40);
+        var footerTop = Math.Max(Math.Max(bottom, SidebarBottom) + 40, height - Footer.Height);
+        shell.Footer.Draw(ui, footerTop, width);
+        ui.Pos(0, footerTop + Footer.Height);
         ui.Custom("browse-end", 1, 1, ItemFlags.NoHit, out _);
         ui.ScrollEnd();
     }
