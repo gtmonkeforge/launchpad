@@ -50,7 +50,7 @@ public sealed partial class BrowseScreen
         y += 77;
         Title(ui, "Format", y);
         changed |= Pick(ui, "format", FormatNames, ref _format, y + 18);
-        y += 59;
+        y += 69;
 
         if (shell.SignedIn)
         {
