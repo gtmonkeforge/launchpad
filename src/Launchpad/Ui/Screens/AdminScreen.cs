@@ -9,7 +9,6 @@ using Ui = GoomeSharp.Ui;
 public sealed class AdminScreen(Shell shell) : IScreen
 {
     private const double CardWidth = 480;
-    private const string PanelHint = "Reviewing mods, handling reports and managing users happens in the admin panel on monkeforge.org. The numbers above come straight from it.";
 
     private JsonNode? _facts;
     private string? _error;
@@ -28,28 +27,20 @@ public sealed class AdminScreen(Shell shell) : IScreen
         ui.ScrollEnd();
     }
 
-    public void Reload()
-    {
-        _asked = false;
-    }
+    public void Reload() => _asked = false;
 
     private double DrawGuest(Ui ui, double width, double height)
     {
-        var (title, text, button) = Wording();
+        var text = shell.SignedIn ? "This account isn't staff, so there's nothing to moderate." : "Sign in with a staff account to moderate mods, users and reports.";
         var cardHeight = 116 + Card.HintHeight(text, CardWidth);
         var x = Math.Max(24, (width - CardWidth) / 2);
         var y = Math.Max(24, (height - Footer.Height - cardHeight) / 3);
 
-        Card card = Card.Open(ui, "admin-card", x, y, CardWidth, cardHeight, title);
+        Card card = Card.Open(ui, "admin-card", x, y, CardWidth, cardHeight, "Admin");
         card.Hint(0, 46, CardWidth, text);
 
-        if (Card.Button(ui, button, x + Card.Padding, y + cardHeight - 56, 360))
-        {
-            if (!shell.SignedIn)
-                shell.Router.Push(new Route(Page.SignIn));
-            else
-                shell.Router.Push(new Route(Page.Browse));
-        }
+        if (Card.Button(ui, shell.SignedIn ? "Back to mods" : "Sign in", x + Card.Padding, y + cardHeight - 56, 360))
+            shell.Router.Push(new Route(shell.SignedIn ? Page.Browse : Page.SignIn));
 
         return y + cardHeight;
     }
@@ -76,9 +67,10 @@ public sealed class AdminScreen(Shell shell) : IScreen
         else
             y = DrawTiles(ui, left, y, inner);
 
-        var height = 112 + Card.HintHeight(PanelHint, inner);
+        const string hint = "Reviews, reports and users are handled in the admin panel on monkeforge.org.";
+        var height = 112 + Card.HintHeight(hint, inner);
         Card panel = Card.Open(ui, "admin-panel", left, y, inner, height, "Admin panel");
-        panel.Hint(0, 46, inner, PanelHint);
+        panel.Hint(0, 46, inner, hint);
 
         if (Widgets.Button(ui, "admin-open", left + Card.Padding, y + height - 56, "Open the admin panel on monkeforge.org", ButtonKind.Primary, out _, true, 36, Glyphs.Link))
             shell.OpenForge("/admin");
@@ -134,13 +126,5 @@ public sealed class AdminScreen(Shell shell) : IScreen
 
             shell.Invalidate();
         });
-    }
-
-    private (string Title, string Text, string Button) Wording()
-    {
-        if (!shell.SignedIn)
-            return ("Admin", "Sign in with a staff account to moderate mods, users and reports.", "Sign in");
-
-        return ("Admin", "Your account isn't a staff account, so there is nothing to moderate here.", "Back to mods");
     }
 }
