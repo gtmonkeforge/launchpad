@@ -11,13 +11,13 @@ public sealed partial class ModScreen
 {
     private JsonNode? _report;
     private bool _reportFailed;
+    private string? _reportVersion;
     private string _rating = "-";
 
     private void LoadExtras(string guid)
     {
         _report = null;
         _reportFailed = false;
-        _rating = "-";
         var basePath = "/api/v1/mods/" + Uri.EscapeDataString(guid);
         var request = _request;
 
@@ -28,7 +28,10 @@ public sealed partial class ModScreen
                 JsonNode result = await _shell.App.Forge.GetJsonAsync(basePath + "/monkeshield-report?channel=" + Uri.EscapeDataString(_channel));
 
                 if (request == _request)
+                {
                     _report = result["report"];
+                    _reportVersion = result.Str("version");
+                }
             }
             catch (UserFacingException)
             {
@@ -38,21 +41,7 @@ public sealed partial class ModScreen
             _shell.Invalidate();
         });
 
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                JsonNode result = await _shell.App.Forge.GetJsonAsync(basePath + "/ratings");
-
-                if (request == _request && result.Long("count") > 0)
-                    _rating = (result?["average"]?.GetValue<double>() ?? 0).ToString("0.0", CultureInfo.InvariantCulture) + " ★";
-            }
-            catch (UserFacingException)
-            {
-            }
-
-            _shell.Invalidate();
-        });
+        LoadCommunity();
     }
 
     private double DrawShield(Ui ui, double left, double width, double y)
@@ -92,7 +81,7 @@ public sealed partial class ModScreen
         var buttonTop = measured ? y + 262 : y + 232;
 
         if (Button(ui, "mod-shield-report", "Full report", left + 20, buttonTop, width - 40, 34, ButtonStyle.Plain))
-            _shell.OpenForge("/view/" + Uri.EscapeDataString(_guid) + "/monkeshield?channel=" + Uri.EscapeDataString(_channel));
+            ShowTab("Security");
 
         return y + height;
     }

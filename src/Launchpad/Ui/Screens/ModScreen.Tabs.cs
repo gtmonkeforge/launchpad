@@ -8,7 +8,26 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class ModScreen
 {
-    private static readonly string[] TabNames = ["Overview", "Versions", "Community", "Security"];
+    private List<string> TabNames()
+    {
+        var names = new List<string> { "Overview" };
+
+        if (Tiers.Count > 0)
+            names.Add("Tiers");
+
+        names.AddRange(["Versions", "Community", "Security"]);
+        return names;
+    }
+
+    private string TabCount(string name) => name switch
+    {
+        "Versions" => ((_mod!["releases"] as JsonArray)?.Count ?? 0).ToString(),
+        "Tiers" => Tiers.Count.ToString(),
+        "Community" => _comments.Long("total") > 0 ? _comments.Long("total").ToString() : "",
+        _ => "",
+    };
+
+    private void ShowTab(string name) => _tab = Math.Max(0, TabNames().IndexOf(name));
 
     private int _tab;
     private MarkdownLayout? _layout;
@@ -19,24 +38,25 @@ public sealed partial class ModScreen
         DrawTabBar(ui, left, width, y);
         y += 42 + 14;
 
-        return _tab switch
+        return TabNames()[Math.Min(_tab, TabNames().Count - 1)] switch
         {
-            0 => DrawOverview(ui, left, width, y),
-            1 => DrawVersions(ui, left, width, y),
-            2 => DrawOnWebsite(ui, left, width, y, "Community", "Comments, reviews and reports live on monkeforge.org.", "#community"),
-            _ => DrawOnWebsite(ui, left, width, y, "Security", "The MonkeShield analysis for this mod is shown on monkeforge.org.", "/monkeshield"),
+            "Overview" => DrawOverview(ui, left, width, y),
+            "Tiers" => DrawTiers(ui, left, width, y),
+            "Versions" => DrawVersions(ui, left, width, y),
+            "Community" => DrawCommunity(ui, left, width, y),
+            _ => DrawSecurity(ui, left, width, y),
         };
     }
 
     private void DrawTabBar(Ui ui, double left, double width, double y)
     {
         var x = 0.0;
-        var releases = (_mod!["releases"] as JsonArray)?.Count ?? 0;
+        var names = TabNames();
 
-        for (var i = 0; i < TabNames.Length; i++)
+        for (var i = 0; i < names.Count; i++)
         {
-            var label = TabNames[i];
-            var count = i == 1 ? releases.ToString() : "";
+            var label = names[i];
+            var count = TabCount(label);
             var labelWidth = Fonts.Main.Measure(14.5, label);
             var tabWidth = labelWidth + 32 + (count.Length > 0 ? Fonts.Main.Measure(12, count) + 18 : 0);
             Item tab = Chrome.Hit(ui, "mod-tab-" + i, left + x, y, tabWidth, 42);
@@ -109,21 +129,5 @@ public sealed partial class ModScreen
         Chrome.Box(c, box.X, box.Y, width, height, Palette.RadiusLarge, Palette.Surface, Palette.Line);
         Markdown.Draw(ui, _layout, "mod-md-", left + 22, y + 22, _ox, _oy, url => _shell.Call("shell.open", new JsonObject { ["url"] = url }));
         return y + height;
-    }
-
-    private double DrawOnWebsite(Ui ui, double left, double width, double y, string title, string text, string anchor)
-    {
-        Item box = Area(ui, "mod-web-" + title, left, y, width, 130);
-        Canvas c = ui.Canvas()!;
-        Chrome.Box(c, box.X, box.Y, width, 130, Palette.RadiusLarge, Palette.Surface, Palette.Line);
-        Chrome.BoldText(c, Fonts.Main, 17, box.X + 22, box.Y + 34, title, Palette.Text);
-        Chrome.Text(c, Fonts.Main, 14, box.X + 22, box.Y + 64, text, Palette.Muted);
-
-        var path = "/view/" + Uri.EscapeDataString(_guid) + anchor;
-
-        if (Button(ui, "mod-web-open-" + title, "Open on monkeforge.org", left + 22, y + 82, 210, 36, ButtonStyle.Plain))
-            _shell.OpenForge(path);
-
-        return y + 130;
     }
 }
