@@ -180,7 +180,7 @@ public sealed partial class ModScreen
             rows.Add(("Capabilities", string.Join("|", capabilities), false));
 
         var valueWidth = width - 40 - DetailLabel - 8;
-        var lines = rows.Select(row => row.Label == "Capabilities" ? new List<string> { row.Value } : Chrome.Wrap(row.Mono ? Fonts.Mono : Fonts.Main, 13, row.Value, valueWidth, 3)).ToList();
+        var lines = rows.Select(row => row.Label == "Capabilities" ? new List<string> { row.Value } : row.Mono ? BreakAnywhere(Fonts.Mono, 13, row.Value, valueWidth - 16) : Chrome.Wrap(Fonts.Main, 13, row.Value, valueWidth, 3)).ToList();
         var heights = lines.Select(list => Math.Max(37.0, list.Count * 17 + 20)).ToList();
         var height = 62 + heights.Sum() + 12;
         Item card = Area(ui, "mod-details", left, y, width, height);
@@ -200,10 +200,33 @@ public sealed partial class ModScreen
         }
 
         DrawGuidCopy(ui, left + 20 + DetailLabel, y + 56, valueWidth, heights[0]);
+        Glyphs.Copy(ui.Canvas()!, card.X + width - 28, card.Y + 56 + 19, Palette.Faint);
         return y + height;
     }
 
     private const double DetailLabel = 96;
+
+    private static List<string> BreakAnywhere(Font font, double size, string text, double width)
+    {
+        var lines = new List<string>();
+        var line = "";
+
+        foreach (var letter in text)
+        {
+            if (line.Length > 0 && font.Measure(size, line + letter) > width)
+            {
+                lines.Add(line);
+                line = "";
+            }
+
+            line += letter;
+        }
+
+        if (line.Length > 0)
+            lines.Add(line);
+
+        return lines;
+    }
 
     private static void DrawDetailValue(Canvas c, (string Label, string Value, bool Mono) row, List<string> lines, double x, double top)
     {
