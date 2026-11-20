@@ -59,13 +59,13 @@ public sealed class Footer(Shell shell)
         x += Chrome.Text(c, Fonts.Mono, 11.5, x, top, _quip, Palette.Faint) + 18;
         Chip(c, x, top, "Launchpad v" + _launchpad);
 
-        var right = box.X + width - 24;
+        var right = width - 24;
 
         for (var i = Links.Length - 1; i >= 0; i--)
         {
             var linkWidth = Fonts.Main.Measure(12.5, Links[i].Name);
             right -= linkWidth;
-            Link(ui, Links[i].Name, Links[i].Target, right, top, linkWidth);
+            Link(ui, Links[i].Name, Links[i].Target, right, y + 35, linkWidth);
             right -= 18;
         }
 
@@ -81,7 +81,7 @@ public sealed class Footer(Shell shell)
     private void Link(Ui ui, string name, Route target, double x, double centerY, double width)
     {
         Item item = Chrome.Hit(ui, "footer-" + name, x - 2, centerY - 11, width + 4, 22);
-        Chrome.Text(ui.Canvas()!, Fonts.Main, 12.5, x, centerY, name, item.Hovered ? Palette.Text : Palette.Muted);
+        Chrome.Text(ui.Canvas()!, Fonts.Main, 12.5, item.X + 2, item.Y + 11, name, item.Hovered ? Palette.Text : Palette.Muted);
 
         if (item.Clicked)
             shell.Router.Push(target);
