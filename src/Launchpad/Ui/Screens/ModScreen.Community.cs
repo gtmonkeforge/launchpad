@@ -10,7 +10,6 @@ using Ui = GoomeSharp.Ui;
 public sealed partial class ModScreen
 {
     private const double CommentIndent = 42;
-    private const uint StarOn = Palette.Warn;
 
     private int _hoverStars;
 
@@ -48,7 +47,21 @@ public sealed partial class ModScreen
         Chrome.BoldText(c, Fonts.Main, 17, _ox + x, _oy + top + 14, "Comments", Palette.Text);
         top += 46;
         top = DrawCompose(ui, x, top, inner, signedIn);
-        DrawCommentList(ui, items, heights, x, top, inner);
+
+        if (items.Count == 0)
+        {
+            Item empty = Area(ui, "mod-no-comments", x, top, inner, 30);
+            Chrome.Text(ui.Canvas()!, Fonts.Main, 14, empty.X, empty.Y + 15, _comments == null ? "Loading…" : "No comments yet.", Palette.Muted);
+        }
+
+        var rowY = top;
+
+        for (var i = 0; i < items.Count; i++)
+        {
+            DrawComment(ui, items[i], i, x, rowY, inner);
+            rowY += heights[i];
+        }
+
         top += listHeight;
 
         if (pagesHeight > 0)
@@ -68,11 +81,15 @@ public sealed partial class ModScreen
             return;
         }
 
-        var average = _ratings?["average"]?.GetValue<double>() ?? 0;
+        var average = _ratings["average"]?.GetValue<double>() ?? 0;
         var count = _ratings.Long("count");
         var big = average.ToString("0.0", CultureInfo.InvariantCulture);
         var bigWidth = Chrome.BoldText(c, Fonts.Mono, 34, x, y + 22, big, Palette.Text);
-        DrawStars(c, x + bigWidth + 18, y + 12, 20, (int)Math.Round(average));
+        var filled = (int)Math.Round(average);
+
+        for (var n = 1; n <= 5; n++)
+            DrawStar(c, x + bigWidth + 18 + 10 + (n - 1) * 24, y + 12, 10, n <= filled ? Palette.Warn : Palette.LineStrong);
+
         Chrome.Text(c, Fonts.Mono, 12.5, x + bigWidth + 18, y + 40, $"{count} rating{(count == 1 ? "" : "s")}", Palette.Muted);
     }
 
@@ -89,12 +106,6 @@ public sealed partial class ModScreen
         }
 
         c.DrawPoly(points, color);
-    }
-
-    private static void DrawStars(Canvas c, double x, double centerY, double size, int filled)
-    {
-        for (var n = 1; n <= 5; n++)
-            DrawStar(c, x + size / 2 + (n - 1) * (size + 4), centerY, size / 2, n <= filled ? StarOn : Palette.LineStrong);
     }
 
     private void DrawRatingControls(Ui ui, double x, double y)
@@ -116,7 +127,7 @@ public sealed partial class ModScreen
             }
 
             var lit = n <= (_hoverStars > 0 && hovered ? _hoverStars : mine);
-            DrawStar(c, star.X + 16, star.Y + 15, 11, lit ? StarOn : Palette.LineStrong);
+            DrawStar(c, star.X + 16, star.Y + 15, 11, lit ? Palette.Warn : Palette.LineStrong);
 
             if (star.Clicked)
                 Rate(n);
@@ -164,22 +175,6 @@ public sealed partial class ModScreen
             PostComment();
 
         return y + 150;
-    }
-
-    private void DrawCommentList(Ui ui, JsonArray items, List<double> heights, double x, double y, double width)
-    {
-        if (items.Count == 0)
-        {
-            Item empty = Area(ui, "mod-no-comments", x, y, width, 30);
-            Chrome.Text(ui.Canvas()!, Fonts.Main, 14, empty.X, empty.Y + 15, _comments == null ? "Loading…" : "No comments yet.", Palette.Muted);
-            return;
-        }
-
-        for (var i = 0; i < items.Count; i++)
-        {
-            DrawComment(ui, items[i], i, x, y, width);
-            y += heights[i];
-        }
     }
 
     private void DrawComment(Ui ui, JsonNode? comment, int index, double x, double y, double width)

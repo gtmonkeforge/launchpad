@@ -43,7 +43,7 @@ public sealed partial class ModScreen
                 if (request == _request)
                 {
                     _ratings = result;
-                    _rating = result.Long("count") > 0 ? (result?["average"]?.GetValue<double>() ?? 0).ToString("0.0", CultureInfo.InvariantCulture) + " ★" : "-";
+                    _rating = result.Long("count") > 0 ? (result["average"]?.GetValue<double>() ?? 0).ToString("0.0", CultureInfo.InvariantCulture) + " ★" : "-";
                 }
             }
             catch (UserFacingException)

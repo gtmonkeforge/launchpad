@@ -13,9 +13,8 @@ public sealed partial class ModScreen
 
     private double DrawTiers(Ui ui, double left, double width, double y)
     {
-        var intro = "Pick a monthly tier to unlock this mod. You can cancel any time from your profile.";
         Item note = Area(ui, "mod-tiers-intro", left, y, width, 24);
-        Chrome.Text(ui.Canvas()!, Fonts.Main, 14, note.X, note.Y + 12, intro, Palette.Muted);
+        Chrome.Text(ui.Canvas()!, Fonts.Main, 14, note.X, note.Y + 12, "Pick a monthly tier to unlock this mod. You can cancel any time from your profile.", Palette.Muted);
         y += 38;
 
         if (Locked && _mod.Long("price_cents") > 0)
@@ -23,9 +22,8 @@ public sealed partial class ModScreen
 
         var columns = width >= 560 ? 2 : 1;
         var cardWidth = (width - TierGap * (columns - 1)) / columns;
-        var count = Tiers.Count;
 
-        for (var i = 0; i < count; i += columns)
+        for (var i = 0; i < Tiers.Count; i += columns)
         {
             var row = Tiers.Skip(i).Take(columns).ToList();
             var height = row.Max(tier => TierHeight(tier, cardWidth));

@@ -145,12 +145,12 @@ public sealed partial class ModScreen
         ui.Space(6);
 
         if (ui.Button(_donating ? "Opening…" : "Continue to payment") && !_donating)
-            StartDonation(currency, ui);
+            StartDonation(currency);
 
         ui.SameLine();
     }
 
-    private void StartDonation(string currency, Ui ui)
+    private void StartDonation(string currency)
     {
         var minimum = _store.Long("min_donation_cents");
         var maximum = _store.Long("max_donation_cents");
