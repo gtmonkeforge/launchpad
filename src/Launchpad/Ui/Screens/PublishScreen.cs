@@ -60,7 +60,7 @@ public sealed partial class PublishScreen(Shell shell) : IScreen
     {
         if (!shell.SignedIn)
         {
-            DrawSignIn(ui, width);
+            DrawSignIn(ui, width, height);
             return;
         }
 
@@ -133,26 +133,10 @@ public sealed partial class PublishScreen(Shell shell) : IScreen
         return y + 140;
     }
 
-    private void DrawSignIn(Ui ui, double width)
+    private void DrawSignIn(Ui ui, double width, double height)
     {
-        var cardWidth = 460.0;
-        var cardHeight = 230.0;
-        var x = Math.Max(24, (width - cardWidth) / 2);
-        var y = 90.0;
-
-        ui.Pos(x, y);
-        ui.Custom("publish-signin-card", cardWidth, cardHeight, ItemFlags.NoHit, out Item card);
-        Canvas c = ui.Canvas()!;
-        Chrome.Box(c, card.X, card.Y, cardWidth, cardHeight, Palette.RadiusLarge, Palette.Surface, Palette.Line);
-        Chrome.BoldText(c, Fonts.Main, 22, card.X + 28, card.Y + 44, "Publish a mod", Palette.Text);
-
-        var lines = Chrome.Wrap(Fonts.Main, 14.5, "Create your page and ship releases. Your account is your author profile.", cardWidth - 56, 3);
-
-        for (var i = 0; i < lines.Count; i++)
-            Chrome.Text(c, Fonts.Main, 14.5, card.X + 28, card.Y + 84 + i * 22, lines[i], Palette.Muted);
-
-        if (ActionButton(ui, "publish-signin", "Sign in", x + 28, y + cardHeight - 66, 120, true))
-            shell.SignIn();
+        GuestCard.Draw(ui, shell, "publish", width, height, "Publish a mod", "Create your page and ship releases. Your account is your author profile.", "Sign in", false);
+        shell.Footer.Draw(ui, height - Footer.Height, width);
     }
 
     private async Task LoadAuthors()

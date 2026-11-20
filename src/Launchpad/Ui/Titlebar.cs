@@ -267,7 +267,7 @@ public sealed class Titlebar(Shell shell)
         if (GuestRow(ui, "Library", Icons.Inbox))
             Go(ui, Page.Library);
 
-        if (GuestRow(ui, "Game & mod loader", (c, x, y, color) => Icons.Category(c, "Gameplay", x, y, color)))
+        if (GuestRow(ui, "Game & mod loader", (canvas, iconX, iconY, color) => Icons.Category(canvas, "Gameplay", iconX, iconY, color)))
             Go(ui, Page.Game);
 
         ui.Separator();
