@@ -43,7 +43,7 @@ public sealed class Router(Shell shell)
         Page.Mod => new PlaceholderScreen(shell, "Mod", "/view/" + route.Arg),
         Page.Library => new LibraryScreen(shell),
         Page.Publish => new PublishScreen(shell),
-        Page.Admin => new PlaceholderScreen(shell, "Admin", "/admin"),
+        Page.Admin => new AdminScreen(shell),
         Page.Game => new GameSettingsScreen(shell),
         Page.Settings => new SettingsScreen(shell),
         Page.SignIn => new SignInScreen(shell),
