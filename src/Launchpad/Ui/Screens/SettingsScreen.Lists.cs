@@ -94,7 +94,7 @@ public sealed partial class SettingsScreen
             var key = items[i];
             var top = 52 + i * 56;
             var used = key.Str("last_used_at") is { } when ? "last used " + Format.Ago(DateTimeOffset.Parse(when)) : "never used";
-            card.Bold(Card.Padding, top + 14, 14.5, (key.Str("name") ?? "") + "  " + key.Str("prefix") + "...", Palette.Text);
+            card.Bold(Card.Padding, top + 14, 14.5, Chrome.Clip(Fonts.Main, 14.5, (key.Str("name") ?? "") + "  " + key.Str("prefix") + "...", width - Card.Padding * 2 - 110), Palette.Text);
             card.Text(Card.Padding, top + 36, 13, used, Palette.Muted);
 
             if (key.Str("revoked_at") != null)
@@ -132,7 +132,7 @@ public sealed partial class SettingsScreen
         for (var i = 0; i < items.Count; i++)
         {
             var used = items[i].Str("last_used_at") is { } when ? "Last used " + Format.Ago(DateTimeOffset.Parse(when)) : "Never used";
-            card.Bold(Card.Padding, top + i * 56 + 14, 14.5, items[i].Str("name") ?? "", Palette.Text);
+            card.Bold(Card.Padding, top + i * 56 + 14, 14.5, Chrome.Clip(Fonts.Main, 14.5, items[i].Str("name") ?? "", width - Card.Padding * 2 - 110), Palette.Text);
             card.Text(Card.Padding, top + i * 56 + 36, 13, used, Palette.Muted);
         }
 
