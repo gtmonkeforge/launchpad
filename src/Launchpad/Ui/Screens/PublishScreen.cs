@@ -139,7 +139,7 @@ public sealed partial class PublishScreen : IScreen
     private void DrawSignIn(Ui ui, double width, double height)
     {
         GuestCard.Draw(ui, shell, "publish", width, height, "Publish a mod", "Create your page and ship releases. Your account is your author profile.", "Sign in", false);
-        shell.Footer.Draw(ui, height - Footer.Height, width);
+        shell.Footer.Draw(ui, Palette.TitlebarHeight + height - Footer.Height, width);
     }
 
     private async Task LoadAuthors()

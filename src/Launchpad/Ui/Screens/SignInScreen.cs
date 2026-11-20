@@ -19,7 +19,7 @@ public sealed class SignInScreen(Shell shell) : IScreen
             : "Your browser opens monkeforge.org, where you sign in with Discord, a passkey, or your password. Launchpad picks it up from there.";
 
         GuestCard.Draw(ui, shell, "signin", width, height, "Sign in to MonkeForge", text, "Sign in with your browser", true);
-        shell.Footer.Draw(ui, height - Footer.Height, width);
+        shell.Footer.Draw(ui, Palette.TitlebarHeight + height - Footer.Height, width);
     }
 
     public void Reload()

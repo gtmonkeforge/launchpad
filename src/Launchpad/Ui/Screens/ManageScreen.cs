@@ -41,7 +41,7 @@ public sealed partial class ManageScreen : IScreen
         if (!_shell.SignedIn)
         {
             GuestCard.Draw(ui, _shell, "manage", width, height, "Manage a mod", "Sign in to edit your mods, ship releases and set prices.", "Sign in", false);
-            _shell.Footer.Draw(ui, height - Footer.Height, width);
+            _shell.Footer.Draw(ui, Palette.TitlebarHeight + height - Footer.Height, width);
             return;
         }
 

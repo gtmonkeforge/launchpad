@@ -13,7 +13,7 @@ public static class GuestCard
         var lines = Chrome.Wrap(Fonts.Main, 14.5, text, Width - 64, 4);
         var cardHeight = 205 + lines.Count * 23 + (stacked ? 102 : 52);
         var x = Math.Max(24, (width - Width) / 2);
-        var y = Math.Max(24, (height - Footer.Height - cardHeight) / 2);
+        var y = Palette.TitlebarHeight + Math.Max(24, Math.Min(80, (height - Footer.Height - cardHeight) / 2));
 
         ui.Pos(x, y);
         ui.Custom(id + "-card", Width, cardHeight, ItemFlags.NoHit, out Item card);

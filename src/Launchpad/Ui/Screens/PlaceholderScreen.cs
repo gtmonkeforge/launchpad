@@ -30,7 +30,7 @@ public sealed class PlaceholderScreen(Shell shell, string title, string forgePat
         if (ui.Button("Open on monkeforge.org"))
             shell.OpenForge(forgePath);
 
-        shell.Footer.Draw(ui, height - Footer.Height, width);
+        shell.Footer.Draw(ui, Palette.TitlebarHeight + height - Footer.Height, width);
     }
 
     public void Reload()
