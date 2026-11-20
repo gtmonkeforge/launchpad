@@ -48,10 +48,14 @@ public sealed class Shell
 
     public void SignOut() => Call("auth.signOut", []);
 
-    public void Call(string method, JsonObject args)
+    public void Call(string method, JsonObject args) => _ = CallAsync(method, args);
+
+    public Task<bool> CallAsync(string method, JsonObject args)
     {
-        _ = Task.Run(async () =>
+        return Task.Run(async () =>
         {
+            var worked = true;
+
             try
             {
                 await _bridge.DispatchAsync(method, args, CancellationToken.None);
@@ -59,9 +63,11 @@ public sealed class Shell
             catch (UserFacingException ex)
             {
                 _pendingToast = ex.Message;
+                worked = false;
             }
 
             Invalidate();
+            return worked;
         });
     }
 
@@ -72,7 +78,8 @@ public sealed class Shell
         if (_pendingToast == null)
             return;
 
-        Toast(_pendingToast);
+        var text = _pendingToast;
         _pendingToast = null;
+        Window.Ui.Toast(text);
     }
 }
