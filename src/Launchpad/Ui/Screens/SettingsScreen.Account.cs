@@ -9,10 +9,6 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class SettingsScreen
 {
-    private const string IdHint = "Share this with mod authors who want to add you to a private release channel.";
-    private const string SessionHint = "You stay signed in for 30 days on this computer. Signing out ends this session only. To sign out everywhere, use Sign-in & security.";
-    private const string DeleteHint = "Deleting your account is done by MonkeForge staff so your mods and purchases are handled properly. Open a support ticket from the website and they will take care of it.";
-
     private string _publicName = "";
     private string _bio = "";
     private string _avatarPath = "";
@@ -38,10 +34,17 @@ public sealed partial class SettingsScreen
         if (Card.Button(ui, "View profile", left + width - 142, y + 30, 120))
             shell.Router.Push(new Route(Page.Profile));
 
-        y = DrawProfileForm(ui, left, y + 96 + 16, width);
+        y = DrawProfileForm(ui, left, y + 112, width);
         y = DrawAccountId(ui, left, y + 16, width, user.Str("id") ?? "");
         y = DrawSessionCard(ui, left, y + 16, width);
-        return DrawDeleteCard(ui, left, y + 16, width);
+
+        var gone = "Staff delete accounts so your mods and purchases are handled properly. Open a support ticket on the website.";
+        var height = 120 + Card.HintHeight(gone, width);
+
+        if (DangerCard(ui, "account-delete", left, y + 16, width, height, "Delete account", gone, "account-delete-open", "Contact support"))
+            shell.OpenForge("/support");
+
+        return y + 16 + height;
     }
 
     private void FillProfile()
@@ -130,9 +133,10 @@ public sealed partial class SettingsScreen
 
     private double DrawAccountId(Ui ui, double left, double y, double width, string id)
     {
-        var height = 130 + Card.HintHeight(IdHint, width) - 36;
+        var hint = "Share this with mod authors who want to add you to a private release channel.";
+        var height = 94 + Card.HintHeight(hint, width);
         Card card = Card.Open(ui, "account-id", left, y, width, height, "Account ID");
-        var below = 44 + card.Hint(0, 44, width, IdHint);
+        var below = 44 + card.Hint(0, 44, width, hint);
         card.Text(Card.Padding, below + 22, 13.5, id, Palette.Text, true);
 
         if (Card.Button(ui, "Copy", left + width - 102, y + below + 5, 80))
@@ -146,9 +150,10 @@ public sealed partial class SettingsScreen
 
     private double DrawSessionCard(Ui ui, double left, double y, double width)
     {
-        var height = 120 + Card.HintHeight(SessionHint, width);
+        var hint = "You stay signed in for 30 days on this computer. Signing out ends this session only. To sign out everywhere, use Sign-in & security.";
+        var height = 120 + Card.HintHeight(hint, width);
         Card card = Card.Open(ui, "account-session", left, y, width, height, "Session");
-        card.Hint(0, 44, width, SessionHint);
+        card.Hint(0, 44, width, hint);
 
         if (Card.Button(ui, "Sign out", left + Card.Padding, y + height - 56, 110))
         {
@@ -159,15 +164,10 @@ public sealed partial class SettingsScreen
         return y + height;
     }
 
-    private double DrawDeleteCard(Ui ui, double left, double y, double width)
+    private bool DangerCard(Ui ui, string id, double left, double y, double width, double height, string title, string hint, string buttonId, string label)
     {
-        var height = 120 + Card.HintHeight(DeleteHint, width);
-        Card card = Card.Open(ui, "account-delete", left, y, width, height, "Delete account");
-        card.Hint(0, 44, width, DeleteHint);
-
-        if (Widgets.Button(ui, "account-delete-open", left + Card.Padding, y + height - 56, "Contact support", ButtonKind.Danger, out _, true, 36))
-            shell.OpenForge("/support");
-
-        return y + height;
+        Card card = Card.Open(ui, id, left, y, width, height, title);
+        card.Hint(0, 44, width, hint);
+        return Widgets.Button(ui, buttonId, left + Card.Padding, y + height - 56, label, ButtonKind.Danger, out _, true, 36);
     }
 }

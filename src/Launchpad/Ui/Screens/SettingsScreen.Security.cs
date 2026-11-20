@@ -8,9 +8,6 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class SettingsScreen
 {
-    private const string PasskeyHint = "Sign in with your fingerprint, face, screen lock or a security key. Passkeys need your browser to register, so adding one opens monkeforge.org. You can rename and remove them here.";
-    private const string EverywhereHint = "Ends every session on other browsers and apps, including the website and the CLI. This computer stays signed in. Access keys keep working; revoke them under Access keys. MonkeForge doesn't list individual sessions, so this is the way to end them.";
-
     private string _newEmail = "";
     private string _emailPassword = "";
     private string _currentPassword = "";
@@ -31,16 +28,24 @@ public sealed partial class SettingsScreen
 
         var provider = _data.Str("provider") == "email" ? "This is an email account. Sign in with your username or email and password, or a passkey." : "This account signs in with Discord (@" + _data.Str("discord_username") + ") or a passkey.";
         var y = TopMargin;
-        Card how = Card.Open(ui, "security-how", left, y, width, 84 + Card.HintHeight(provider, width) - 21, "How you sign in");
+        var howHeight = 63 + Card.HintHeight(provider, width);
+        Card how = Card.Open(ui, "security-how", left, y, width, howHeight, "How you sign in");
         how.Hint(0, 44, width, provider);
-        y += 84 + Card.HintHeight(provider, width) - 21 + 16;
+        y += howHeight + 16;
         y = DrawEmailCard(ui, left, y, width) + 16;
 
         if (_data.Bool("has_password"))
             y = DrawPasswordCard(ui, left, y, width) + 16;
 
         y = DrawPasskeys(ui, left, y, width) + 16;
-        return DrawEverywhere(ui, left, y, width);
+
+        var hint = "Ends every session on other browsers and apps, including the website and the CLI. This computer stays signed in. Access keys keep working; revoke them under Access keys. MonkeForge doesn't list individual sessions, so this is the way to end them.";
+        var height = 120 + Card.HintHeight(hint, width);
+
+        if (DangerCard(ui, "security-everywhere", left, y, width, height, "Sign out everywhere", hint, "sign-out-others", "Sign out other devices"))
+            Ask("Sign out other devices?", "Every other browser and app is signed out. This computer stays signed in.", "Sign out others", SignOutOthers);
+
+        return y + height;
     }
 
     private double DrawEmailCard(Ui ui, double left, double y, double width)
@@ -104,11 +109,12 @@ public sealed partial class SettingsScreen
     {
         const double height = 196;
         Card card = Card.Open(ui, "security-password", left, y, width, height, "Password");
+        var field = Math.Min(width - Card.Padding * 2, 360);
         ui.Pos(left + Card.Padding, y + 56);
-        ui.Size(Math.Min(width - Card.Padding * 2, 360), 36);
+        ui.Size(field, 36);
         ui.Password("##current-password", ref _currentPassword, "Current password");
         ui.Pos(left + Card.Padding, y + 100);
-        ui.Size(Math.Min(width - Card.Padding * 2, 360), 36);
+        ui.Size(field, 36);
         ui.Password("##new-password", ref _newPassword, "New password, at least 8 characters");
         card.Text(Card.Padding, 166, 13, "Changing it signs you out on every other device.", Palette.Muted);
 
@@ -125,19 +131,18 @@ public sealed partial class SettingsScreen
     private double DrawPasskeys(Ui ui, double left, double y, double width)
     {
         var keys = ListOf(_data, "passkeys");
-        var hint = Card.HintHeight(PasskeyHint, width);
-        var height = 66 + hint + Math.Max(1, keys.Count) * 56;
+        var hint = "Sign in with your fingerprint, face, screen lock or a security key. Adding one opens monkeforge.org in your browser. You can rename and remove them here.";
+        var height = 66 + Card.HintHeight(hint, width) + Math.Max(1, keys.Count) * 56;
         Card card = Card.Open(ui, "security-passkeys", left, y, width, height, "Passkeys");
-        var top = 44 + card.Hint(0, 44, width, PasskeyHint) + 8;
+        var top = 44 + card.Hint(0, 44, width, hint) + 8;
 
         if (keys.Count == 0)
             card.Hint(0, top, width, "No passkeys yet.");
 
         for (var i = 0; i < keys.Count; i++)
         {
-            var used = Format.Ago(keys[i].Str("last_used_at"), "") is { Length: > 0 } ago ? "last used " + ago : "never used";
             card.Bold(Card.Padding, top + i * 56 + 14, 14.5, Chrome.Clip(Fonts.Main, 14.5, keys[i].Str("name") ?? "Passkey", width - 330), Palette.Text);
-            card.Text(Card.Padding, top + i * 56 + 36, 13, "Added " + Format.Date(keys[i].Str("created_at")) + " · " + used, Palette.Muted);
+            card.Text(Card.Padding, top + i * 56 + 36, 13, "Added " + Format.Date(keys[i].Str("created_at")) + " · " + LastUsed(keys[i]), Palette.Muted);
         }
 
         for (var i = 0; i < keys.Count; i++)
@@ -165,18 +170,6 @@ public sealed partial class SettingsScreen
             _renameText = key.Str("name") ?? "";
             _renameOpen = true;
         }
-    }
-
-    private double DrawEverywhere(Ui ui, double left, double y, double width)
-    {
-        var height = 120 + Card.HintHeight(EverywhereHint, width);
-        Card card = Card.Open(ui, "security-everywhere", left, y, width, height, "Sign out everywhere");
-        card.Hint(0, 44, width, EverywhereHint);
-
-        if (Widgets.Button(ui, "sign-out-others", left + Card.Padding, y + height - 56, "Sign out other devices", ButtonKind.Danger, out _, true, 36))
-            Ask("Sign out other devices?", "Every other browser and app is signed out. This computer stays signed in.", "Sign out others", SignOutOthers);
-
-        return y + height;
     }
 
     private void SignOutOthers()

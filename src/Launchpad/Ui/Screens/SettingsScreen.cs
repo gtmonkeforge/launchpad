@@ -168,24 +168,16 @@ public sealed partial class SettingsScreen : IScreen
     {
         var forge = shell.App.Forge;
 
-        switch (key)
+        return key switch
         {
-            case "emails":
-            case "security":
-                return await forge.GetJsonAsync("/api/v1/account");
-            case "keys":
-                return await forge.GetJsonAsync("/api/v1/api-keys");
-            case "devices":
-                return await forge.GetJsonAsync("/api/v1/injector/devices");
-            case "account":
-                return await forge.GetJsonAsync("/api/v1/users/" + Uri.EscapeDataString(forge.UserId ?? ""));
-            case "payouts":
-                return await FetchPayouts();
-            case "purchases":
-                return await FetchPurchases();
-            default:
-                return new JsonObject();
-        }
+            "emails" or "security" => await forge.GetJsonAsync("/api/v1/account"),
+            "keys" => await forge.GetJsonAsync("/api/v1/api-keys"),
+            "devices" => await forge.GetJsonAsync("/api/v1/injector/devices"),
+            "account" => await forge.GetJsonAsync("/api/v1/users/" + Uri.EscapeDataString(forge.UserId ?? "")),
+            "payouts" => await FetchPayouts(),
+            "purchases" => await FetchPurchases(),
+            _ => new JsonObject(),
+        };
     }
 
     private bool Waiting(Ui ui, double left, double width, out double bottom)

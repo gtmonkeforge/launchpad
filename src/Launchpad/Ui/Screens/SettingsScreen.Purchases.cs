@@ -8,8 +8,7 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class SettingsScreen
 {
-    private const double PurchaseRow = 64;
-    private const string ReceiptsHint = "Stripe emails you a receipt for every payment. Card details and refunds are handled on monkeforge.org.";
+    private const double RowHeight = 64;
 
     private bool _reasonOpen;
     private bool _cancelOpen;
@@ -65,9 +64,10 @@ public sealed partial class SettingsScreen
 
     private double DrawReceipts(Ui ui, double left, double y, double width)
     {
-        var height = 118 + Card.HintHeight(ReceiptsHint, width);
+        var hint = "Stripe emails you a receipt for every payment. Card details and refunds are handled on monkeforge.org.";
+        var height = 118 + Card.HintHeight(hint, width);
         Card card = Card.Open(ui, "purchases-receipts-card", left, y, width, height, "Receipts and disputes");
-        card.Hint(0, 44, width, ReceiptsHint);
+        card.Hint(0, 44, width, hint);
         var top = y + height - 56;
 
         if (Widgets.Button(ui, "purchases-library", left + Card.Padding, top, "Open Library", ButtonKind.Primary, out var buttonWidth, true, 36))
@@ -88,28 +88,23 @@ public sealed partial class SettingsScreen
 
     private double DrawSubscriptions(Ui ui, double left, double y, double width, List<JsonNode> items, Dictionary<string, string> notes)
     {
-        var height = 56 + items.Count * PurchaseRow;
+        var height = 56 + items.Count * RowHeight;
         Card card = Card.Open(ui, "purchases-subs", left, y, width, height, "Memberships");
 
         for (var i = 0; i < items.Count; i++)
         {
             var item = items[i];
-            var top = 52 + i * PurchaseRow;
+            var top = 52 + i * RowHeight;
             var name = item.Str("scope") == "creator" ? item.Str("owner_name") + " · " + item.Str("tier_name") : (item.Str("mod_name") ?? item.Str("guid")) + " · " + item.Str("tier_name");
             var live = item.Bool("live");
             var when = Format.Date(item.Str("current_period_end"));
             var state = !live ? "Ended" : item.Str("status") == "past_due" ? "Payment failed. Update your card in the email from Stripe." : item.Bool("cancel_at_period_end") ? "Ends " + when : when.Length > 0 ? "Renews " + when : "";
             var price = Format.Money(item.Long("price_cents"), item.Str("currency") ?? "usd") + " a month";
-            var reply = notes.GetValueOrDefault(item.Str("id") ?? "", "");
-            var right = width - Card.Padding - 260;
-            var shown = Chrome.Clip(Fonts.Main, 14.5, name, right - Card.Padding - 120);
-            card.Bold(Card.Padding, top + 14, 14.5, shown, Palette.Text);
-            card.Text(Card.Padding, top + 36, 13, Chrome.Clip(Fonts.Main, 13, Joined(price, state, reply.Length > 0 ? "Staff reply: " + reply : ""), right - Card.Padding), Palette.Muted);
-            DisputePill(card, Card.Padding + Fonts.Main.Measure(14.5, shown) + 12, top + 3, item.Str("dispute_status"));
+            Row(card, top, width, name, Joined(price, state, Reply(notes, item.Str("id"))), item.Str("dispute_status"));
         }
 
         for (var i = 0; i < items.Count; i++)
-            DrawSubscriptionButtons(ui, items[i], left + width - Card.Padding, y + 52 + i * PurchaseRow + 10);
+            DrawSubscriptionButtons(ui, items[i], left + width - Card.Padding, y + 52 + i * RowHeight + 10);
 
         return y + height;
     }
@@ -144,21 +139,16 @@ public sealed partial class SettingsScreen
 
     private double DrawBought(Ui ui, double left, double y, double width, List<JsonNode> items, Dictionary<string, string> notes)
     {
-        var height = 56 + items.Count * PurchaseRow;
+        var height = 56 + items.Count * RowHeight;
         Card card = Card.Open(ui, "purchases-bought", left, y, width, height, "One-time purchases");
 
         for (var i = 0; i < items.Count; i++)
         {
             var item = items[i];
-            var top = 52 + i * PurchaseRow;
+            var top = 52 + i * RowHeight;
             var cents = item.Long("amount_cents");
             var sub = Joined(cents > 0 ? Format.Money(cents, item.Str("currency") ?? "usd") : "", Format.Date(item.Str("purchased_at")), item.Bool("available") ? "" : "No longer listed");
-            var reply = notes.GetValueOrDefault(item.Str("payment_id") ?? "", "");
-            var right = width - Card.Padding - 260;
-            var shown = Chrome.Clip(Fonts.Main, 14.5, item.Str("name") ?? "", right - Card.Padding - 120);
-            card.Bold(Card.Padding, top + 14, 14.5, shown, Palette.Text);
-            card.Text(Card.Padding, top + 36, 13, Chrome.Clip(Fonts.Main, 13, Joined(sub, reply.Length > 0 ? "Staff reply: " + reply : ""), right - Card.Padding), Palette.Muted);
-            DisputePill(card, Card.Padding + Fonts.Main.Measure(14.5, shown) + 12, top + 3, item.Str("dispute_status"));
+            Row(card, top, width, item.Str("name") ?? "", Joined(sub, Reply(notes, item.Str("payment_id"))), item.Str("dispute_status"));
         }
 
         for (var i = 0; i < items.Count; i++)
@@ -169,11 +159,26 @@ public sealed partial class SettingsScreen
             var payment = items[i].Str("payment_id") ?? "";
             var buttonWidth = Widgets.ButtonWidth("Report a problem");
 
-            if (Widgets.Button(ui, "buy-dispute-" + payment, left + width - Card.Padding - buttonWidth, y + 52 + i * PurchaseRow + 10, "Report a problem", ButtonKind.Subtle, out _, true, 32))
+            if (Widgets.Button(ui, "buy-dispute-" + payment, left + width - Card.Padding - buttonWidth, y + 52 + i * RowHeight + 10, "Report a problem", ButtonKind.Subtle, out _, true, 32))
                 OpenDispute(payment, null, items[i].Str("name") ?? "this purchase");
         }
 
         return y + height;
+    }
+
+    private static string Reply(Dictionary<string, string> notes, string? key)
+    {
+        var reply = notes.GetValueOrDefault(key ?? "", "");
+        return reply.Length > 0 ? "Staff reply: " + reply : "";
+    }
+
+    private static void Row(Card card, double top, double width, string name, string detail, string? dispute)
+    {
+        var right = width - Card.Padding - 260;
+        var shown = Chrome.Clip(Fonts.Main, 14.5, name, right - Card.Padding - 120);
+        card.Bold(Card.Padding, top + 14, 14.5, shown, Palette.Text);
+        card.Text(Card.Padding, top + 36, 13, Chrome.Clip(Fonts.Main, 13, detail, right - Card.Padding), Palette.Muted);
+        DisputePill(card, Card.Padding + Fonts.Main.Measure(14.5, shown) + 12, top + 3, dispute);
     }
 
     private static string Joined(params string[] parts) => string.Join(" · ", parts.Where(part => part.Length > 0));
