@@ -16,6 +16,8 @@ public sealed class Titlebar(Shell shell)
         ("Admin", Page.Admin),
     ];
 
+    private const double NotificationWidth = 340;
+
     private readonly Bitmap _logo = Bitmap.Load(LoadLogo());
     private bool _searchFocusWanted;
     private string? _beforeSlash;
@@ -158,7 +160,12 @@ public sealed class Titlebar(Shell shell)
             c.DrawCircle(item.X + 26, item.Y + 8, 4, Palette.Accent);
 
         if (item.Clicked)
+        {
+            ui.Custom("notifications-seed", 0, 0, ItemFlags.NoHit, out _);
+            ui.Pos(item.X + 34 - NotificationWidth - 20, item.Y + 34);
+            ui.Custom("notifications-anchor", NotificationWidth + 20, 1, ItemFlags.NoHit, out _);
             ui.PopupOpen("notifications");
+        }
 
         NotificationMenu(ui);
     }
@@ -169,7 +176,7 @@ public sealed class Titlebar(Shell shell)
             return;
 
         var items = shell.Notifications.Items;
-        ui.Custom("notifications-width", 340, 1, ItemFlags.NoHit, out _);
+        ui.Custom("notifications-width", NotificationWidth, 1, ItemFlags.NoHit, out _);
         ui.Label("Notifications");
 
         if (items.Count > 0 && ui.Button("Mark all read"))
