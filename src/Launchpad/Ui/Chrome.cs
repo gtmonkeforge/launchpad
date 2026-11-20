@@ -56,6 +56,16 @@ public static class Chrome
 
     public static List<string> Wrap(Font font, double size, string text, double maxWidth, int maxLines)
     {
+        if (text.Contains('\n'))
+        {
+            var paragraphs = new List<string>();
+
+            foreach (var paragraph in text.Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                paragraphs.AddRange(Wrap(font, size, paragraph, maxWidth, maxLines));
+
+            return paragraphs.Take(maxLines).ToList();
+        }
+
         var lines = new List<string>();
         var line = "";
         var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);

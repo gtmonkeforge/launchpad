@@ -17,7 +17,7 @@ public sealed partial class ProfileScreen
         var name = _profile.Str("display_name") ?? "?";
         var textLeft = HeroPad + AvatarSize + 24;
         var textWidth = width - textLeft - HeroPad - ActionWidth;
-        var about = Chrome.Wrap(Fonts.Main, 14.5, _profile.Str("description") ?? "", textWidth, 5);
+        var about = AboutLines(textWidth);
         var links = _profile["links"] is JsonArray list ? list.Where(link => link != null).ToList() : [];
         var members = _profile["members"] is JsonArray people ? people.Where(member => member != null).ToList() : [];
 
@@ -49,6 +49,29 @@ public sealed partial class ProfileScreen
         DrawMembers(ui, members, left + textLeft, cursor, textWidth);
         DrawActions(ui, left + width - HeroPad - ActionWidth, y + HeroPad, ActionWidth);
         return y + height;
+    }
+
+    private List<string> AboutLines(double width)
+    {
+        var lines = new List<string>();
+
+        foreach (var paragraph in (_profile.Str("description") ?? "").Replace("\r", "").Split('\n'))
+        {
+            if (paragraph.Trim().Length == 0)
+            {
+                if (lines.Count > 0 && lines[^1].Length > 0)
+                    lines.Add("");
+
+                continue;
+            }
+
+            lines.AddRange(Chrome.Wrap(Fonts.Main, 14.5, paragraph.Trim(), width, 4));
+        }
+
+        while (lines.Count > 0 && lines[^1].Length == 0)
+            lines.RemoveAt(lines.Count - 1);
+
+        return lines.Take(8).ToList();
     }
 
     private static int LayoutRows(List<double> widths, double available, double gap)
