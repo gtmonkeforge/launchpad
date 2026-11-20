@@ -20,7 +20,7 @@ public sealed partial class ModScreen
         return item;
     }
 
-    private bool Button(Ui ui, string id, string text, double x, double y, double w, double h, ButtonStyle style, bool enabled = true)
+    private bool Button(Ui ui, string id, string text, double x, double y, double w, double h, ButtonStyle style, bool enabled = true, Action<Canvas, double, double, uint>? glyph = null)
     {
         Item item = Chrome.Hit(ui, id, x, y, w, h);
         Canvas c = ui.Canvas()!;
@@ -33,7 +33,9 @@ public sealed partial class ModScreen
 
         var color = !enabled ? Palette.Faint : style == ButtonStyle.Primary ? Palette.AccentInk : style == ButtonStyle.Danger ? Palette.Bad : Palette.Text;
         var size = h >= 40 ? 15 : 13.5;
-        Chrome.BoldText(c, Fonts.Main, size, item.X + w / 2 - Fonts.Main.Measure(size, text) / 2, item.Y + h / 2, text, color);
+        var shift = glyph == null ? 0 : 12;
+        glyph?.Invoke(c, item.X + w / 2 - Fonts.Main.Measure(size, text) / 2 - shift + 2, item.Y + h / 2, color);
+        Chrome.BoldText(c, Fonts.Main, size, item.X + w / 2 - Fonts.Main.Measure(size, text) / 2 + shift, item.Y + h / 2, text, color);
         return item.Clicked && enabled;
     }
 
@@ -63,12 +65,12 @@ public sealed partial class ModScreen
     private static string Size(long bytes)
     {
         if (bytes >= 1024 * 1024)
-            return (bytes / 1048576.0).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + " MB";
+            return (bytes / 1048576.0).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " MB";
 
-        return Math.Max(1, bytes / 1024) + " KB";
+        return Math.Max(1, (long)Math.Round(bytes / 1024.0, MidpointRounding.AwayFromZero)) + " KB";
     }
 
-    private static string DateText(string? text) => ParseDate(text).ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture);
+    private static string DateText(string? text) => ParseDate(text).ToLocalTime().ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture);
 
     private static readonly Dictionary<string, string> LoaderLabels = new()
     {
