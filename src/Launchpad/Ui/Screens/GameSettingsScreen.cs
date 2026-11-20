@@ -7,19 +7,33 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class GameSettingsScreen : IScreen
 {
-    private const double SideMargin = 30;
-    private const double RightGutter = 57;
-    private const double MaxWidth = 780;
     private const double PanelGap = 18;
+    private const double NavTop = 112;
+
+    private static readonly (string Key, NavEntry Entry)[] Sections =
+    [
+        ("game", new NavEntry("Game folder", Glyphs.Game)),
+        ("loader", new NavEntry("Mod loader", Glyphs.Layers)),
+        ("about", new NavEntry("About Launchpad", Glyphs.Rocket)),
+    ];
+
+    private static readonly NavEntry[] Entries =
+    [
+        .. Sections.Select(section => section.Entry),
+        new NavEntry("Account settings", Glyphs.Gear),
+        new NavEntry("Devices", Glyphs.Server),
+    ];
 
     private readonly Shell shell;
+    private int _section;
     private bool _started;
     private double _ox;
     private double _oy;
 
-    public GameSettingsScreen(Shell shell)
+    public GameSettingsScreen(Shell shell, string? arg)
     {
         this.shell = shell;
+        _section = Math.Max(0, Array.FindIndex(Sections, section => section.Key == arg));
         shell.App.Event += OnAppEvent;
     }
 
@@ -43,34 +57,61 @@ public sealed partial class GameSettingsScreen : IScreen
         _ox = origin.X;
         _oy = origin.Y;
 
-        var panel = Math.Min(MaxWidth, width - SideMargin - RightGutter);
-        Canvas c = ui.Canvas()!;
-        Widgets.PageHead(c, _ox + SideMargin, _oy + 27, "Game & mod loader");
-        Chrome.Text(c, Fonts.Main, 14.5, _ox + SideMargin, _oy + 78, "These settings are stored on this computer.", Palette.Muted);
+        SettingsNav.Header(ui, "game-title", "Launchpad", "These settings are stored on this computer.");
+        var clicked = SettingsNav.Draw(ui, "game-nav-", Entries, _section, NavTop);
 
-        var y = 112.0;
-        y = DrawGame(ui, SideMargin, y, panel) + PanelGap;
-        y = DrawInstalls(ui, SideMargin, y, panel) + PanelGap;
-        y = DrawLoader(ui, SideMargin, y, panel) + PanelGap;
+        if (clicked >= 0)
+            Open(clicked);
 
-        if (OperatingSystem.IsLinux())
-            y = DrawProton(ui, SideMargin, y, panel) + PanelGap;
+        var x = SettingsNav.ContentLeft;
+        var panel = SettingsNav.ContentWidth(width);
+        var y = _section switch
+        {
+            0 => DrawGameSection(ui, x, NavTop, panel),
+            1 => DrawLoaderSection(ui, x, NavTop, panel),
+            _ => DrawAbout(ui, x, NavTop, panel),
+        };
 
-        y = DrawAbout(ui, SideMargin, y, panel);
-
-        ui.Pos(0, y + 40);
+        ui.Pos(0, Math.Max(y, NavTop + Entries.Length * SettingsNav.RowHeight) + 40);
         ui.Custom("game-end", 1, 1, ItemFlags.NoHit, out _);
         ui.ScrollEnd();
         DrawFolderDialog(ui);
     }
 
-    private void Panel(Ui ui, string id, double x, double y, double width, double height, string title)
+    private void Open(int index)
+    {
+        if (index < Sections.Length)
+            _section = index;
+        else
+            shell.Router.Push(new Route(Page.Settings, index == Sections.Length ? null : "devices"));
+    }
+
+    private double DrawGameSection(Ui ui, double x, double y, double width)
+    {
+        y = DrawGame(ui, x, y, width) + PanelGap;
+        y = DrawInstalls(ui, x, y, width) + PanelGap;
+        return DrawSomewhere(ui, x, y, width);
+    }
+
+    private double DrawLoaderSection(Ui ui, double x, double y, double width)
+    {
+        y = DrawLoader(ui, x, y, width) + PanelGap;
+        y = DrawStatus(ui, x, y, width) + PanelGap;
+
+        if (OperatingSystem.IsLinux())
+            y = DrawProton(ui, x, y, width);
+
+        return y;
+    }
+
+    private void Panel(Ui ui, string id, double x, double y, double width, double height, string title, NavGlyph glyph)
     {
         ui.Pos(x, y);
         ui.Custom(id, width, height, ItemFlags.NoHit, out Item box);
         Canvas c = ui.Canvas()!;
         Chrome.Box(c, box.X, box.Y, width, height, Palette.RadiusLarge, Palette.Surface, Palette.Line);
-        Chrome.BoldText(c, Fonts.Main, 17, box.X + 22, box.Y + 28, title, Palette.Text);
+        glyph(c, box.X + 30, box.Y + 28, Palette.Muted);
+        Chrome.BoldText(c, Fonts.Main, 16, box.X + 46, box.Y + 28, title, Palette.Text);
     }
 
     private void Hint(double x, double y, double width, string text)
@@ -87,8 +128,8 @@ public sealed partial class GameSettingsScreen : IScreen
     private double DrawGame(Ui ui, double x, double y, double width)
     {
         var notice = $"Launchpad hasn't found Gorilla Tag yet. Pick one of the installs below, or choose the folder that contains {GameLocator.Executable}.";
-        var height = 52 + (GameValid ? 54 : Widgets.NoticeHeight(width - 44, notice)) + 18 + 34 + 22;
-        Panel(ui, "game-panel", x, y, width, height, "Gorilla Tag");
+        var height = 52 + (GameValid ? 54 : Widgets.NoticeHeight(width - 44, notice)) + 22;
+        Panel(ui, "game-panel", x, y, width, height, "Gorilla Tag", Glyphs.Game);
         Canvas c = ui.Canvas()!;
 
         if (GameValid)
@@ -106,7 +147,17 @@ public sealed partial class GameSettingsScreen : IScreen
             Widgets.Notice(c, _ox + x + 22, _oy + y + 52, width - 44, notice);
         }
 
-        if (Widgets.Button(ui, "game-choose-folder", x + 22, y + height - 56, "Choose folder...", ButtonKind.Subtle, out _))
+        return y + height;
+    }
+
+    private double DrawSomewhere(Ui ui, double x, double y, double width)
+    {
+        var text = $"Choose the folder that contains {GameLocator.Executable}.";
+        var height = 56 + 24 + 34 + 24;
+        Panel(ui, "somewhere-panel", x, y, width, height, "Somewhere else?", Glyphs.Tray);
+        Hint(x, y + 66, width, text);
+
+        if (Widgets.Button(ui, "game-choose-folder", x + 22, y + height - 58, "Choose folder...", ButtonKind.Subtle, out _))
             OpenFolderDialog();
 
         return y + height;
@@ -115,18 +166,25 @@ public sealed partial class GameSettingsScreen : IScreen
     private static void InstallBox(Canvas c, double x, double y, double width, string label, string path, bool selected)
     {
         Chrome.Box(c, x, y, width, 54, Palette.Radius, Palette.Surface2, selected ? Palette.AccentLine : Palette.Line);
-        Chrome.BoldText(c, Fonts.Main, 14.5, x + 16, y + 19, label, Palette.Text);
-        Chrome.Text(c, Fonts.Mono, 12.5, x + 16, y + 38, Chrome.Clip(Fonts.Mono, 12.5, path, width - 140), Palette.Muted);
+        Glyphs.Game(c, x + 28, y + 27, Palette.Muted);
+        Chrome.BoldText(c, Fonts.Main, 14.5, x + 52, y + 19, label, Palette.Text);
+        Chrome.Text(c, Fonts.Mono, 12.5, x + 52, y + 38, Chrome.Clip(Fonts.Mono, 12.5, path, width - 190), Palette.Muted);
 
-        if (selected)
-            Widgets.Pill(c, x + width - 16 - Fonts.Main.Measure(12.5, "Selected") - 18, y + 15, "Selected", Palette.Good);
+        if (!selected)
+            return;
+
+        var pillWidth = Fonts.Main.Measure(12.5, "Selected") + 34;
+        var left = x + width - 16 - pillWidth;
+        Chrome.Box(c, left, y + 15, pillWidth, Widgets.PillHeight, 6, Palette.Surface, (Palette.Good & 0x00FFFFFF) | 0x66000000);
+        Icons.Check(c, left + 13, y + 15 + Widgets.PillHeight / 2, Palette.Good);
+        Chrome.Text(c, Fonts.Main, 12.5, left + 24, y + 15 + Widgets.PillHeight / 2, "Selected", Palette.Good);
     }
 
     private double DrawInstalls(Ui ui, double x, double y, double width)
     {
         var rows = Math.Max(1, _installs?.Count ?? 1);
         var height = 96 + rows * 62;
-        Panel(ui, "installs-panel", x, y, width, height, "Detected installs");
+        Panel(ui, "installs-panel", x, y, width, height, "Detected installs", Glyphs.Swatches);
 
         var scan = _installs == null ? "Scanning..." : "Scan again";
         var scanWidth = Fonts.Main.Measure(14, scan) + 30;

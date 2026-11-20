@@ -13,33 +13,36 @@ public sealed partial class GameSettingsScreen
     {
         var hintLines = HintLines(LoaderHint, width);
         var segmentTop = 56 + hintLines * 21 + 6;
-        var installHint = $"{Loader.DisplayName()} is installed automatically with your first mod. Use this to reinstall it or get the newest release from its official GitHub page.";
-        var installLines = HintLines(installHint, width);
-        var height = segmentTop + 36 + 28 + (GameValid ? 160 + installLines * 21 : 60);
+        var height = segmentTop + 36 + 24;
 
-        Panel(ui, "loader-panel", x, y, width, height, "Mod loader");
+        Panel(ui, "loader-panel", x, y, width, height, "Mod loader", Glyphs.Layers);
         Hint(x, y + 56, width, LoaderHint);
         Segment(ui, x + 22, y + segmentTop, ModLoader.Bepinex5, 0);
         Segment(ui, x + 22, y + segmentTop, ModLoader.MelonLoader, 1);
+        return y + height;
+    }
 
-        var top = y + segmentTop + 36 + 28;
+    private double DrawStatus(Ui ui, double x, double y, double width)
+    {
+        var installHint = $"{Loader.DisplayName()} is installed automatically with your first mod. Use this to reinstall it or get the newest release from its official GitHub page.";
+        var installLines = HintLines(installHint, width);
+        var height = GameValid ? 134 + installLines * 21 - 1 + 34 + 22 : 56 + 40;
+        Panel(ui, "status-panel", x, y, width, height, "Status", Glyphs.Server);
         Canvas c = ui.Canvas()!;
-        Chrome.BoldText(c, Fonts.Main, 15, _ox + x + 22, _oy + top, "Status", Palette.Text);
-        top += 18;
 
         if (!GameValid)
         {
-            Chrome.Text(c, Fonts.Main, 14.5, _ox + x + 22, _oy + top + 14, "Choose your game folder first.", Palette.Muted);
+            Chrome.Text(c, Fonts.Main, 14.5, _ox + x + 22, _oy + y + 66, "Choose your game folder first.", Palette.Muted);
             return y + height;
         }
 
         if (_statusError != null)
-            Chrome.Text(c, Fonts.Main, 14.5, _ox + x + 22, _oy + top + 14, Chrome.Clip(Fonts.Main, 14.5, _statusError, width - 44), Palette.Bad);
+            Chrome.Text(c, Fonts.Main, 14.5, _ox + x + 22, _oy + y + 70, Chrome.Clip(Fonts.Main, 14.5, _statusError, width - 44), Palette.Bad);
         else
-            StatusGrid(c, x + 22, top, width - 44);
+            StatusGrid(c, x + 22, y + 48, width - 44);
 
-        Hint(x, top + 80, width, installHint);
-        DrawInstallButton(ui, x + 22, top + 80 + installLines * 21 + 6);
+        Hint(x, y + 134, width, installHint);
+        DrawInstallButton(ui, x + 22, y + 134 + installLines * 21 - 1);
         return y + height;
     }
 
@@ -93,7 +96,7 @@ public sealed partial class GameSettingsScreen
         var text = "Under Proton, the loader only starts if Steam's launch options tell Wine to use it. Launchpad does this when it installs the loader. Close Steam first, or Steam may undo the change.";
         var lines = HintLines(text, width);
         var height = 56 + lines * 21 + 6 + 34 + 24;
-        Panel(ui, "proton-panel", x, y, width, height, "Proton");
+        Panel(ui, "proton-panel", x, y, width, height, "Proton", Glyphs.Code);
         Hint(x, y + 56, width, text);
         var label = _working == "proton" ? "Setting up..." : "Set up launch options";
 
@@ -116,7 +119,7 @@ public sealed partial class GameSettingsScreen
         var note = "Launchpad is the desktop companion for MonkeForge. Community made. Not affiliated with Another Axiom.";
         var noteLines = HintLines(note, width);
         var height = 56 + rows.Count * 28 + 8 + noteLines * 21 + 14 + 32 + 24;
-        Panel(ui, "about-panel", x, y, width, height, "MonkeForge Launchpad");
+        Panel(ui, "about-panel", x, y, width, height, "MonkeForge Launchpad", Glyphs.Rocket);
         Canvas c = ui.Canvas()!;
         var top = _oy + y + 66;
 

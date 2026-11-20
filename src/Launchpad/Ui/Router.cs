@@ -44,8 +44,8 @@ public sealed class Router(Shell shell)
         Page.Library => new LibraryScreen(shell),
         Page.Publish => new PublishScreen(shell),
         Page.Admin => new AdminScreen(shell),
-        Page.Game => new GameSettingsScreen(shell),
-        Page.Settings => new SettingsScreen(shell),
+        Page.Game => new GameSettingsScreen(shell, route.Arg),
+        Page.Settings => new SettingsScreen(shell, route.Arg),
         Page.SignIn => new SignInScreen(shell),
         _ => new PlaceholderScreen(shell, "Launchpad", "/"),
     };
