@@ -239,7 +239,8 @@ public sealed class Titlebar(Shell shell)
         if (!ui.PopupBegin("account"))
             return;
 
-        ui.Label(name);
+        ui.Custom("account-width", 190, 1, ItemFlags.NoHit, out _);
+        ui.Label(Chrome.Clip(Fonts.Main, 14, name, 170));
         ui.Separator();
 
         if (ui.Selectable("Settings", false))
