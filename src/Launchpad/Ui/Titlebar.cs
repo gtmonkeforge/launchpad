@@ -39,7 +39,7 @@ public sealed class Titlebar(Shell shell)
         c.DrawRect(0, height - 1, width, 1, Palette.Line);
 
         var leftEnd = DrawLeft(ui, 6);
-        var rightStart = DrawRight(ui, width);
+        var rightStart = DrawRight(ui, width, leftEnd);
         DrawDragArea(ui, leftEnd, rightStart - leftEnd, height);
     }
 
@@ -99,7 +99,7 @@ public sealed class Titlebar(Shell shell)
         return width;
     }
 
-    private double DrawRight(Ui ui, double width)
+    private double DrawRight(Ui ui, double width, double leftEnd)
     {
         var x = width - 46;
         WindowButton(ui, "close", x, Icons.Close, true, shell.Window.Quit);
@@ -114,8 +114,10 @@ public sealed class Titlebar(Shell shell)
         Profile(ui, x);
         x -= 7 + 34;
         Bell(ui, x);
-        x -= 10 + 298;
-        Search(ui, x);
+        x -= 10;
+        var searchWidth = Math.Clamp(x - leftEnd, 120, 298);
+        x -= searchWidth;
+        Search(ui, x, searchWidth);
         return x;
     }
 
@@ -260,11 +262,11 @@ public sealed class Titlebar(Shell shell)
         ui.PopupEnd();
     }
 
-    private void Search(Ui ui, double x)
+    private void Search(Ui ui, double x, double width)
     {
         string text = shell.Search;
         ui.Pos(x, 9);
-        ui.Size(298, 34);
+        ui.Size(width, 34);
 
         if (_searchFocusWanted)
         {
@@ -274,7 +276,7 @@ public sealed class Titlebar(Shell shell)
 
         var result = ui.InputEx("##titlebar-search", ref text, InputFlags.EnterReturns, "Search mods, authors, GUIDs");
         shell.Search = text;
-        var chip = Chrome.Hit(ui, "search-chip", x + 298 - 30, 9 + 7, 20, 20);
+        var chip = Chrome.Hit(ui, "search-chip", x + width - 30, 9 + 7, 20, 20);
         Canvas c = ui.Canvas()!;
         Chrome.Box(c, chip.X, chip.Y, 20, 20, 5, Palette.Surface2, Palette.LineStrong);
         Chrome.Text(c, Fonts.Mono, 12, chip.X + 10 - Fonts.Mono.Measure(12, "/") / 2, chip.Y + 10, "/", Palette.Muted);
