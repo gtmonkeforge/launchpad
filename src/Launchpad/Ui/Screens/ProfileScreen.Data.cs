@@ -63,18 +63,12 @@ public sealed partial class ProfileScreen
     {
         try
         {
-            JsonNode result = await shell.App.Forge.GetJsonAsync(path);
-            return result[key] is JsonArray array ? array.Where(item => item != null).Select(item => item!.DeepClone()).ToList() : [];
+            return Items(await shell.App.Forge.GetJsonAsync(path), key);
         }
         catch (UserFacingException)
         {
             return [];
         }
-    }
-
-    private void GoToPage(int page)
-    {
-        _ = Task.Run(() => LoadMods(page));
     }
 
     private async Task LoadMods(int page)
@@ -86,7 +80,7 @@ public sealed partial class ProfileScreen
         try
         {
             JsonNode result = await shell.App.Forge.GetJsonAsync($"/api/v1/mods?author_id={Uri.EscapeDataString(_profile.Str("id") ?? "")}&limit={PageSize}&page={page}");
-            _mods = result["items"] is JsonArray array ? array.Where(item => item != null).Select(item => item!.DeepClone()).ToList() : [];
+            _mods = Items(result, "items");
             _modTotal = (int)result.Long("total");
         }
         catch (UserFacingException)
@@ -115,10 +109,7 @@ public sealed partial class ProfileScreen
         }
     }
 
-    private static List<JsonNode> Items(JsonNode result, string key)
-    {
-        return result[key] is JsonArray array ? array.Where(item => item != null).Select(item => item!.DeepClone()).ToList() : [];
-    }
+    private static List<JsonNode> Items(JsonNode result, string key) => result[key] is JsonArray array ? array.Where(item => item != null).Select(item => item!.DeepClone()).ToList() : [];
 
     private async Task LoadPurchases()
     {
@@ -182,10 +173,6 @@ public sealed partial class ProfileScreen
             shell.Invalidate();
         });
     }
-
-    private void AddFriend() => Act("friend", HttpMethod.Post, "/api/v1/friends", new { user_id = _profile.Str("id") }, "Friend request sent.");
-
-    private void AcceptFriend(string id) => Act("accept-" + id, HttpMethod.Put, "/api/v1/friends/" + Uri.EscapeDataString(id), null, "Friend added.");
 
     private void RemoveFriend(string id, string done) => Act("remove-" + id, HttpMethod.Delete, "/api/v1/friends/" + Uri.EscapeDataString(id), null, done);
 

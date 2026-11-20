@@ -9,8 +9,6 @@ using Ui = GoomeSharp.Ui;
 public sealed partial class ProfileScreen : IScreen
 {
     private const double SideMargin = 30;
-    private const double RightGutter = 57;
-    private const double TopMargin = 87;
 
     private readonly Shell shell;
     private readonly string _wanted;
@@ -45,10 +43,7 @@ public sealed partial class ProfileScreen : IScreen
         return [.. names];
     }
 
-    public void Reload()
-    {
-        Load();
-    }
+    public void Reload() => Load();
 
     public void Draw(Ui ui, double width, double height)
     {
@@ -68,8 +63,8 @@ public sealed partial class ProfileScreen : IScreen
         ui.Pos(0, 0);
         ui.Custom("profile-origin", 1, 1, ItemFlags.NoHit, out _);
 
-        var contentWidth = Math.Max(560, width - SideMargin - RightGutter);
-        var bottom = Body(ui, contentWidth, TopMargin - 55);
+        var contentWidth = Math.Max(560, width - SideMargin - 57);
+        var bottom = Body(ui, contentWidth, 32);
 
         var footerTop = Math.Max(bottom + 40, height - Footer.Height);
         shell.Footer.Draw(ui, footerTop, width);

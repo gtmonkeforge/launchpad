@@ -206,7 +206,7 @@ public sealed partial class ProfileScreen
                 break;
             case "incoming":
                 if (Widgets.Button(ui, "profile-accept", left, top, "Accept request", ButtonKind.Primary, out _, !_busy.ContainsKey("accept-" + id), 36))
-                    AcceptFriend(id);
+                    Act("accept-" + id, HttpMethod.Put, "/api/v1/friends/" + Uri.EscapeDataString(id), null, "Friend added.");
 
                 break;
             case "sent":
@@ -216,7 +216,7 @@ public sealed partial class ProfileScreen
                 break;
             default:
                 if (Widgets.Button(ui, "profile-add", left, top, "Add friend", ButtonKind.Primary, out _, !_busy.ContainsKey("friend"), 36, Icons.Plus))
-                    AddFriend();
+                    Act("friend", HttpMethod.Post, "/api/v1/friends", new { user_id = _profile.Str("id") }, "Friend request sent.");
 
                 break;
         }
