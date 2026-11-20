@@ -11,7 +11,7 @@ public static class GuestCard
     public static void Draw(Ui ui, Shell shell, string id, double width, double height, string title, string text, string signIn, bool stacked)
     {
         var lines = Chrome.Wrap(Fonts.Main, 14.5, text, Width - 64, 4);
-        var cardHeight = 205 + lines.Count * 23 + (stacked ? 102 : 52);
+        var cardHeight = 187 + lines.Count * 23 + (stacked ? 102 : 52);
         var x = Math.Max(24, (width - Width) / 2);
         var y = Palette.TitlebarHeight + Math.Max(24, Math.Min(80, (height - Footer.Height - cardHeight) / 2));
 
@@ -20,12 +20,12 @@ public static class GuestCard
         Canvas c = ui.Canvas()!;
         Chrome.Box(c, card.X, card.Y, Width, cardHeight, Palette.RadiusLarge, Palette.Surface, Palette.Line);
         c.DrawBitmap(Brand.Logo, card.X + Width / 2 - 20, card.Y + 38, 40, 40, 0, Palette.Accent);
-        Chrome.BoldText(c, Fonts.Main, 22, card.X + Width / 2 - Fonts.Main.Measure(22, title) / 2, card.Y + 112, title, Palette.Text);
+        Chrome.BoldText(c, Fonts.Main, 22, card.X + Width / 2 - Fonts.Main.Measure(22, title) / 2, card.Y + 113, title, Palette.Text);
 
         for (var i = 0; i < lines.Count; i++)
-            Chrome.Text(c, Fonts.Main, 14.5, card.X + Width / 2 - Fonts.Main.Measure(14.5, lines[i]) / 2, card.Y + 153 + i * 23, lines[i], Palette.Muted);
+            Chrome.Text(c, Fonts.Main, 14.5, card.X + Width / 2 - Fonts.Main.Measure(14.5, lines[i]) / 2, card.Y + 157 + i * 23, lines[i], Palette.Muted);
 
-        var top = y + 176 + lines.Count * 23;
+        var top = y + 161 + lines.Count * 23;
 
         if (shell.SigningIn)
         {
