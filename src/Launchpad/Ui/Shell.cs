@@ -15,6 +15,7 @@ public sealed class Shell
         Window = window;
         _bridge = new Bridge(app, _ => Task.FromResult<string?>(null));
         Images = new ImageCache(app.Forge, Invalidate);
+        Notifications = new Notifications(this);
         Router = new Router(this);
         app.Forge.SessionChanged += Invalidate;
         app.Mods.Changed += Invalidate;
@@ -24,6 +25,7 @@ public sealed class Shell
     public GoomeApp Window { get; }
     public Router Router { get; }
     public ImageCache Images { get; }
+    public Notifications Notifications { get; }
     public string Search { get; set; } = "";
 
     public JsonObject? User => App.Forge.User;

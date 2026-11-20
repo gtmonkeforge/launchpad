@@ -1,5 +1,7 @@
 using GoomeSharp;
 
+using Launchpad.Infrastructure;
+
 namespace Launchpad.Ui;
 
 using Ui = GoomeSharp.Ui;
@@ -145,6 +147,48 @@ public sealed class Titlebar(Shell shell)
         Canvas c = ui.Canvas()!;
         Chrome.Box(c, item.X, item.Y, 34, 34, 9, item.Hovered ? Palette.Hover : Palette.Titlebar, Palette.Line);
         Icons.Bell(c, item.X + 17, item.Y + 16, item.Hovered ? Palette.Text : Palette.Muted);
+
+        shell.Notifications.Watch();
+        var unread = shell.Notifications.Items.Count;
+
+        if (unread > 0)
+            c.DrawCircle(item.X + 26, item.Y + 8, 4, Palette.Accent);
+
+        if (item.Clicked)
+            ui.PopupOpen("notifications");
+
+        NotificationMenu(ui);
+    }
+
+    private void NotificationMenu(Ui ui)
+    {
+        if (!ui.PopupBegin("notifications"))
+            return;
+
+        var items = shell.Notifications.Items;
+        ui.Custom("notifications-width", 340, 1, ItemFlags.NoHit, out _);
+        ui.Label("Notifications");
+
+        if (items.Count > 0 && ui.Button("Mark all read"))
+            shell.Notifications.MarkAllRead();
+
+        ui.Separator();
+
+        if (items.Count == 0)
+            ui.Label("You're all caught up.");
+
+        foreach (var item in items.Take(12))
+        {
+            var body = Chrome.Clip(Fonts.Main, 14, item.Str("body") ?? "", 290);
+
+            if (ui.Selectable(body, false) && Notifications.Link(item) is { Length: > 0 } link)
+            {
+                ui.PopupClose();
+                shell.OpenForge(link);
+            }
+        }
+
+        ui.PopupEnd();
     }
 
     private void Profile(Ui ui, double x)
