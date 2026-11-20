@@ -39,7 +39,7 @@ public sealed class Router(Shell shell)
 
     private IScreen Create(Route route) => route.Page switch
     {
-        Page.Browse => new PlaceholderScreen(shell, "Mods", "/browse"),
+        Page.Browse => new BrowseScreen(shell),
         Page.Mod => new PlaceholderScreen(shell, "Mod", "/view/" + route.Arg),
         Page.Library => new PlaceholderScreen(shell, "Library", "/library"),
         Page.Publish => new PlaceholderScreen(shell, "Publish a mod", "/upload"),
