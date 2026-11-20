@@ -149,21 +149,35 @@ public sealed partial class BrowseScreen(Shell shell) : IScreen
             return y;
 
         var center = left + width / 2;
-        PagerButton(ui, "pager-prev", "Previous", center - 150, y, _page > 1, () => Load(_page - 1));
-        PagerButton(ui, "pager-next", "Next", center + 62, y, _page < pages, () => Load(_page + 1));
+        var text = $"{_page} / {pages}";
+        var textWidth = Fonts.Mono.Measure(13, text);
+        PagerButton(ui, "pager-prev", "Previous", false, center - textWidth / 2 - 12 - 112, y, _page > 1, () => Load(_page - 1));
+        PagerButton(ui, "pager-next", "Next", true, center + textWidth / 2 + 12, y, _page < pages, () => Load(_page + 1));
 
-        Item label = Chrome.Hit(ui, "pager-label", center - 50, y, 100, 34);
-        var text = $"Page {_page} of {pages}";
-        Chrome.Text(ui.Canvas()!, Fonts.Main, 13.5, label.X + 50 - Fonts.Main.Measure(13.5, text) / 2, label.Y + 17, text, Palette.Muted);
+        Item label = Chrome.Hit(ui, "pager-label", center - textWidth / 2, y, textWidth, 34);
+        Chrome.Text(ui.Canvas()!, Fonts.Mono, 13, label.X, label.Y + 17, text, Palette.Muted);
         return y + 34;
     }
 
-    private static void PagerButton(Ui ui, string id, string text, double x, double y, bool enabled, Action click)
+    private static void PagerButton(Ui ui, string id, string text, bool forward, double x, double y, bool enabled, Action click)
     {
-        Item item = Chrome.Hit(ui, id, x, y, 88, 34);
+        Item item = Chrome.Hit(ui, id, x, y, 112, 34);
         Canvas c = ui.Canvas()!;
-        Chrome.Box(c, item.X, item.Y, 88, 34, 8, item.Hovered && enabled ? Palette.Hover : Palette.Surface2, Palette.LineStrong);
-        Chrome.Text(c, Fonts.Main, 13.5, item.X + 44 - Fonts.Main.Measure(13.5, text) / 2, item.Y + 17, text, enabled ? Palette.Text : Palette.Faint);
+        Chrome.Box(c, item.X, item.Y, 112, 34, 8, item.Hovered && enabled ? Palette.Hover : Palette.Surface2, Palette.LineStrong);
+        var color = enabled ? Palette.Text : Palette.Faint;
+        var textWidth = Fonts.Main.Measure(13.5, text);
+        var start = item.X + 56 - (textWidth + 22) / 2;
+
+        if (forward)
+        {
+            Chrome.Text(c, Fonts.Main, 13.5, start, item.Y + 17, text, color);
+            Icons.Forward(c, start + textWidth + 14, item.Y + 17, color);
+        }
+        else
+        {
+            Icons.Back(c, start + 4, item.Y + 17, color);
+            Chrome.Text(c, Fonts.Main, 13.5, start + 22, item.Y + 17, text, color);
+        }
 
         if (item.Clicked && enabled)
             click();
