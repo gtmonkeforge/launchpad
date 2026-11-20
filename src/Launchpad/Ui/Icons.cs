@@ -55,6 +55,41 @@ public static class Icons
         c.DrawLine(x + 5, y - 5, x - 5, y + 5, 1.5, color);
     }
 
+    public static void Gear(Canvas c, double x, double y, uint color)
+    {
+        c.DrawRing(x, y, 5.5, 1.5, color);
+        c.DrawRing(x, y, 2, 1.3, color);
+
+        for (var i = 0; i < 8; i++)
+        {
+            var angle = i * Math.PI / 4;
+            c.DrawLine(x + Math.Cos(angle) * 6.2, y + Math.Sin(angle) * 6.2, x + Math.Cos(angle) * 8.2, y + Math.Sin(angle) * 8.2, 1.7, color);
+        }
+    }
+
+    public static void User(Canvas c, double x, double y, uint color)
+    {
+        c.DrawRing(x, y - 3, 3, 1.3, color);
+        c.DrawArc(x, y + 7, 6, 1.3, 3.5, 5.9, color);
+    }
+
+    public static void Inbox(Canvas c, double x, double y, uint color)
+    {
+        c.DrawRRectLine(x - 7, y - 5, 14, 11, 2, 1.3, color);
+        c.DrawLine(x - 7, y + 1, x - 3, y + 1, 1.3, color);
+        c.DrawLine(x - 3, y + 1, x - 2, y + 3, 1.3, color);
+        c.DrawLine(x - 2, y + 3, x + 2, y + 3, 1.3, color);
+        c.DrawLine(x + 2, y + 3, x + 3, y + 1, 1.3, color);
+        c.DrawLine(x + 3, y + 1, x + 7, y + 1, 1.3, color);
+    }
+
+    public static void Rocket(Canvas c, double x, double y, uint color)
+    {
+        c.DrawLine(x - 6, y + 6, x + 1, y - 1, 1.4, color);
+        c.DrawRing(x + 3.5, y - 3.5, 3.5, 1.3, color);
+        c.DrawLine(x - 5, y + 2, x - 2, y + 5, 1.3, color);
+    }
+
     public static void SmallClose(Canvas c, double x, double y, uint color)
     {
         c.DrawLine(x - 3.5, y - 3.5, x + 3.5, y + 3.5, 1.4, color);

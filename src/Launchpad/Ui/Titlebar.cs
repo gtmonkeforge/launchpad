@@ -17,6 +17,8 @@ public sealed class Titlebar(Shell shell)
     ];
 
     private const double NotificationWidth = 340;
+    private const double GuestMenuWidth = 238;
+    private const double SignInWidth = 66;
 
     private readonly Bitmap _logo = Bitmap.Load(LoadLogo());
     private bool _searchFocusWanted;
@@ -113,10 +115,21 @@ public sealed class Titlebar(Shell shell)
         WindowButton(ui, "minimize", x, Icons.Minimize, false, () => shell.Window.Goome.Minimize());
         x -= 10;
 
-        x -= shell.SignedIn ? 34 : 78;
-        Profile(ui, x);
-        x -= 7 + 34;
-        Bell(ui, x);
+        if (shell.SignedIn)
+        {
+            x -= 34;
+            Profile(ui, x);
+            x -= 7 + 34;
+            Bell(ui, x);
+        }
+        else
+        {
+            x -= SignInWidth;
+            SignInButton(ui, x);
+            x -= 6 + 34;
+            GuestMenuButton(ui, x);
+        }
+
         x -= 10;
         var searchWidth = Math.Clamp(x - leftEnd, 120, 298);
         x -= searchWidth;
@@ -203,12 +216,6 @@ public sealed class Titlebar(Shell shell)
 
     private void Profile(Ui ui, double x)
     {
-        if (!shell.SignedIn)
-        {
-            SignInButton(ui, x);
-            return;
-        }
-
         Item item = Chrome.Hit(ui, "avatar", x, 9, 34, 34);
         Canvas c = ui.Canvas()!;
         var name = shell.User?["name"]?.GetValue<string>() ?? shell.User?["display_name"]?.GetValue<string>() ?? "?";
@@ -232,13 +239,98 @@ public sealed class Titlebar(Shell shell)
 
     private void SignInButton(Ui ui, double x)
     {
-        Item item = Chrome.Hit(ui, "sign-in", x, 9, 78, 34);
+        Item item = Chrome.Hit(ui, "sign-in", x, 11, SignInWidth, 30);
         Canvas c = ui.Canvas()!;
-        c.DrawRRect(item.X, item.Y, 78, 34, 9, item.Hovered ? Palette.Hover : Palette.Surface2);
-        Chrome.Text(c, Fonts.Main, 14, item.X + 39 - Fonts.Main.Measure(14, "Sign in") / 2, item.Y + 17, "Sign in", Palette.Text);
+        c.DrawRRect(item.X, item.Y, SignInWidth, 30, 8, item.Hovered ? 0xFFE46A49 : Palette.Accent);
+        Chrome.BoldText(c, Fonts.Main, 13, item.X + SignInWidth / 2 - Fonts.Main.Measure(13, "Sign in") / 2, item.Y + 15, "Sign in", Palette.AccentInk);
 
         if (item.Clicked)
             shell.Router.Push(new Route(Page.SignIn));
+    }
+
+    private void GuestMenuButton(Ui ui, double x)
+    {
+        Item item = Chrome.Hit(ui, "guest-menu", x, 9, 34, 34);
+        Canvas c = ui.Canvas()!;
+        Chrome.Box(c, item.X, item.Y, 34, 34, 9, item.Hovered ? Palette.Hover : Palette.Titlebar, Palette.Line);
+        Icons.Gear(c, item.X + 17, item.Y + 17, item.Hovered ? Palette.Text : Palette.Muted);
+
+        if (item.Clicked)
+        {
+            ui.Custom("guest-seed", 0, 0, ItemFlags.NoHit, out _);
+            ui.Pos(item.X + 34 - GuestMenuWidth - 20, item.Y + 34);
+            ui.Custom("guest-anchor", GuestMenuWidth + 20, 1, ItemFlags.NoHit, out _);
+            ui.PopupOpen("guest");
+        }
+
+        GuestMenu(ui);
+    }
+
+    private void GuestMenu(Ui ui)
+    {
+        if (!ui.PopupBegin("guest"))
+            return;
+
+        GuestLabel(ui, "Launchpad");
+
+        if (GuestRow(ui, "Library", Icons.Inbox))
+            Go(ui, Page.Library);
+
+        if (GuestRow(ui, "Game & mod loader", (c, x, y, color) => Icons.Category(c, "Gameplay", x, y, color)))
+            Go(ui, Page.Game);
+
+        ui.Separator();
+        GuestLabel(ui, "Site");
+
+        if (GuestRow(ui, "Get the apps", Icons.Rocket))
+        {
+            ui.PopupClose();
+            shell.OpenForge("/software");
+        }
+
+        ui.Separator();
+
+        if (GuestRow(ui, "Sign in", Icons.User))
+        {
+            ui.PopupClose();
+            shell.Router.Push(new Route(Page.SignIn));
+        }
+
+        if (GuestRow(ui, "Create an account", Icons.Plus))
+        {
+            ui.PopupClose();
+            shell.OpenForge("/signup");
+        }
+
+        ui.PopupEnd();
+    }
+
+    private void Go(Ui ui, Page page)
+    {
+        ui.PopupClose();
+        shell.Router.Push(new Route(page));
+    }
+
+    private static void GuestLabel(Ui ui, string text)
+    {
+        ui.Custom("guest-label-" + text, GuestMenuWidth, 24, ItemFlags.NoHit, out Item item);
+        Chrome.Text(ui.Canvas()!, Fonts.Main, 12, item.X + 4, item.Y + 14, text, Palette.Faint);
+    }
+
+    private static bool GuestRow(Ui ui, string text, Action<Canvas, double, double, uint> icon)
+    {
+        ui.Custom("guest-row-" + text, GuestMenuWidth, 34, ItemFlags.None, out Item item);
+        Canvas c = ui.Canvas()!;
+
+        if (item.Hovered)
+            ui.Goome.Cursor = CursorShape.Hand;
+
+        if (item.Hovered)
+            c.DrawRRect(item.X, item.Y, GuestMenuWidth, 34, 7, Palette.Hover);
+
+        icon(c, item.X + 16, item.Y + 17, Palette.Muted);
+        Chrome.Text(c, Fonts.Main, 13.5, item.X + 36, item.Y + 17, text, Palette.Text);
+        return item.Clicked;
     }
 
     private void AccountMenu(Ui ui, string name)
