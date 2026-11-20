@@ -93,7 +93,7 @@ public sealed partial class LibraryScreen
         }
         else if (available)
         {
-            var busy = _busy.Contains(guid);
+            var busy = _busy.ContainsKey(guid);
             var label = busy ? "Working..." : "Install";
             right -= Fonts.Main.Measure(14, label) + 30;
 

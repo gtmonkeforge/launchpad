@@ -157,7 +157,7 @@ public sealed partial class LibraryScreen : IScreen
     {
         var detail = _details.GetValueOrDefault(mod.Guid);
         var name = detail.Str("name") ?? mod.Name;
-        var busy = _busy.Contains(mod.Guid);
+        var busy = _busy.ContainsKey(mod.Guid);
 
         ui.Pos(left, y);
         ui.Custom("library-row-" + mod.Guid, inner, RowHeight, ItemFlags.NoHit, out Item row);

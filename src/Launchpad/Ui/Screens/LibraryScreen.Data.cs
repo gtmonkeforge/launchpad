@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json.Nodes;
 using Launchpad.Infrastructure;
 using Launchpad.Mods;
@@ -7,13 +8,13 @@ namespace Launchpad.Ui.Screens;
 public sealed partial class LibraryScreen
 {
     private List<InstalledView> _mods = [];
-    private readonly Dictionary<string, JsonNode> _details = [];
+    private readonly ConcurrentDictionary<string, JsonNode> _details = [];
     private List<JsonNode> _purchases = [];
     private string? _purchaseError;
     private bool _loading;
     private bool _gameRunning;
     private string _loader = "";
-    private readonly HashSet<string> _busy = [];
+    private readonly ConcurrentDictionary<string, bool> _busy = [];
     private int _request;
 
     private bool Active => ReferenceEquals(shell.Router.Screen, this);
@@ -95,13 +96,13 @@ public sealed partial class LibraryScreen
         if (channel != null)
             args["channel"] = channel;
 
-        _busy.Add(guid);
+        _busy.TryAdd(guid, true);
         shell.Invalidate();
 
         _ = Task.Run(async () =>
         {
             var worked = await shell.CallAsync("mods.install", args);
-            _busy.Remove(guid);
+            _busy.TryRemove(guid, out _);
 
             if (worked)
                 shell.Toast(updating ? $"{name} was updated." : $"{name} is installed.");
@@ -110,13 +111,13 @@ public sealed partial class LibraryScreen
 
     private void Remove(InstalledView mod)
     {
-        _busy.Add(mod.Guid);
+        _busy.TryAdd(mod.Guid, true);
         shell.Invalidate();
 
         _ = Task.Run(async () =>
         {
             var worked = await shell.CallAsync("mods.uninstall", new JsonObject { ["guid"] = mod.Guid });
-            _busy.Remove(mod.Guid);
+            _busy.TryRemove(mod.Guid, out _);
 
             if (worked)
                 shell.Toast($"{mod.Name} was removed.");
@@ -131,10 +132,10 @@ public sealed partial class LibraryScreen
         {
             foreach (InstalledView mod in pending)
             {
-                _busy.Add(mod.Guid);
+                _busy.TryAdd(mod.Guid, true);
                 shell.Invalidate();
                 var worked = await shell.CallAsync("mods.install", new JsonObject { ["guid"] = mod.Guid, ["channel"] = mod.Channel });
-                _busy.Remove(mod.Guid);
+                _busy.TryRemove(mod.Guid, out _);
 
                 if (!worked)
                     return;
