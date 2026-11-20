@@ -274,17 +274,17 @@ public sealed class Titlebar(Shell shell)
     private void Search(Ui ui, double x, double width)
     {
         string text = shell.Search;
-        ui.Pos(x, 9);
-        ui.Size(width, 34);
 
         if (_searchFocusWanted)
         {
+            ui.Pos(x, 9);
+            ui.Size(width, 34);
             ui.SetFocus();
             _searchFocusWanted = false;
             _beforeSlash = text;
         }
 
-        var result = ui.InputEx("##titlebar-search", ref text, InputFlags.EnterReturns, "Search mods, authors, GUIDs");
+        var result = SearchBox.Draw(ui, "titlebar-search", ref text, x, 9, width, 34, "Search mods, authors, GUIDs", true);
 
         if (_beforeSlash != null)
         {
@@ -295,10 +295,6 @@ public sealed class Titlebar(Shell shell)
         }
 
         shell.Search = text;
-        var chip = Chrome.Hit(ui, "search-chip", x + width - 30, 9 + 7, 20, 20);
-        Canvas c = ui.Canvas()!;
-        Chrome.Box(c, chip.X, chip.Y, 20, 20, 5, Palette.Surface2, Palette.LineStrong);
-        Chrome.Text(c, Fonts.Mono, 12, chip.X + 10 - Fonts.Mono.Measure(12, "/") / 2, chip.Y + 10, "/", Palette.Muted);
 
         if (result == 2 && shell.Router.Current.Page != Page.Browse)
             shell.Router.Push(new Route(Page.Browse));

@@ -8,6 +8,7 @@ public sealed partial class BrowseScreen
 {
     private static readonly string[] Categories = ["", "Gameplay", "Cosmetic", "Utilities", "Accessibility", "Other"];
     private static readonly string[] LoaderNames = ["All loaders", "BepInEx 5", "BepInEx 6", "MelonLoader"];
+    private static readonly string[] CapabilityNames = ["Auto-updating", "Extensions", "Networking"];
     private static readonly string[] FormatNames = ["Any format", "DLL", "ZIP"];
 
     private const double WidgetHalf = 14;
@@ -140,13 +141,13 @@ public sealed partial class BrowseScreen
     {
         var countText = _total + (_total == 1 ? " mod" : " mods");
         var countWidth = Fonts.Mono.Measure(13, countText);
-        var free = width - (260 + countWidth + 200 + 30);
+        var chips = ActiveFilters();
+        var chipsWidth = chips.Sum(chip => ChipWidth(chip.Label) + 6);
+        var free = width - (260 + countWidth + 200 + 30 + chipsWidth);
         var inputWidth = Math.Max(260, 260 + free / 2);
 
         var text = shell.Search;
-        ui.Pos(left, top);
-        ui.Size(inputWidth, 41);
-        ui.InputEx("##browse-search", ref text, InputFlags.None, "Search by name, author or GUID");
+        SearchBox.Draw(ui, "browse-search", ref text, left, top, inputWidth, 41, "Search by name, author or GUID", false);
         shell.Search = text;
 
         Item count = Chrome.Hit(ui, "browse-count", left + inputWidth + 10, top, countWidth + 4, 41);
@@ -155,10 +156,62 @@ public sealed partial class BrowseScreen
         var x = Chrome.BoldText(c, Fonts.Mono, 13, count.X, count.Y + 20.5, number, Palette.Text);
         Chrome.Text(c, Fonts.Mono, 13, count.X + x, count.Y + 20.5, countText[number.Length..], Palette.Muted);
 
+        var chipX = left + inputWidth + 10 + countWidth + 14;
+
+        foreach (var chip in chips)
+        {
+            if (Chip(ui, chip.Label, chipX, top + 9.5))
+            {
+                chip.Clear();
+                Load(1);
+            }
+
+            chipX += ChipWidth(chip.Label) + 6;
+        }
+
         ui.Pos(left + width - 200, top);
         ui.Size(200, 41);
 
         if (ui.Combo("##browse-sort", ref _sort, SortNames))
             Load(1);
+    }
+
+    private List<(string Label, Action Clear)> ActiveFilters()
+    {
+        var chips = new List<(string, Action)>();
+        var term = shell.Search.Trim();
+
+        if (term.Length > 0)
+            chips.Add(("\u201c" + Chrome.Clip(Fonts.Main, 12.5, term, 120) + "\u201d", () => shell.Search = ""));
+
+        if (_category.Length > 0)
+            chips.Add((_category, () => _category = ""));
+
+        if (_capability > 0)
+            chips.Add((CapabilityNames[_capability - 1], () => _capability = 0));
+
+        if (_loader > 0)
+            chips.Add((LoaderNames[_loader], () => _loader = 0));
+
+        if (_format > 0)
+            chips.Add((FormatNames[_format], () => _format = 0));
+
+        if (_price > 0)
+            chips.Add((_price == 1 ? "Free" : "Paid", () => _price = 0));
+
+        return chips;
+    }
+
+    private static double ChipWidth(string label) => Fonts.Main.Measure(12.5, label) + 38;
+
+    private static bool Chip(Ui ui, string label, double x, double y)
+    {
+        var width = ChipWidth(label);
+        Item item = Chrome.Hit(ui, "chip-" + label, x, y, width, 22);
+        Canvas c = ui.Canvas()!;
+        Chrome.Box(c, item.X, item.Y, width, 22, 6, item.Hovered ? 0xFF35231F : 0xFF2B1D1A, Palette.AccentLine);
+        Chrome.Text(c, Fonts.Main, 12.5, item.X + 10, item.Y + 11, label, Palette.Text);
+        Icons.SmallClose(c, item.X + width - 13, item.Y + 11, Palette.Muted);
+        return item.Clicked;
     }
 }

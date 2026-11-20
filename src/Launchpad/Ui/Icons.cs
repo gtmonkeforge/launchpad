@@ -55,6 +55,12 @@ public static class Icons
         c.DrawLine(x + 5, y - 5, x - 5, y + 5, 1.5, color);
     }
 
+    public static void SmallClose(Canvas c, double x, double y, uint color)
+    {
+        c.DrawLine(x - 3.5, y - 3.5, x + 3.5, y + 3.5, 1.4, color);
+        c.DrawLine(x + 3.5, y - 3.5, x - 3.5, y + 3.5, 1.4, color);
+    }
+
     public static void Plus(Canvas c, double x, double y, uint color)
     {
         c.DrawLine(x - 5, y, x + 5, y, 1.7, color);
