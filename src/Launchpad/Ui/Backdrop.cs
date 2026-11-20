@@ -6,37 +6,34 @@ public static class Backdrop
 {
     public static Bitmap Blurred(Bitmap source)
     {
-        const int width = 10;
-        const int height = 4;
-        var pixels = new uint[width * height];
-        var cropWidth = Math.Min(source.Width, source.Height * width / height);
-        var cropHeight = Math.Min(source.Height, source.Width * height / width);
-        var left = (source.Width - cropWidth) / 2;
-        var top = (source.Height - cropHeight) / 2;
+        const int w = 10, h = 4;
+        var pixels = new uint[w * h];
+        var cw = Math.Min(source.Width, source.Height * w / h);
+        var ch = Math.Min(source.Height, source.Width * h / w);
+        var left = (source.Width - cw) / 2;
+        var top = (source.Height - ch) / 2;
         var data = source.Pixels;
 
-        for (var y = 0; y < height; y++)
-        {
-            for (var x = 0; x < width; x++)
-                pixels[y * width + x] = Average(data, source.Stride, left + x * cropWidth / width, top + y * cropHeight / height, Math.Max(1, cropWidth / width), Math.Max(1, cropHeight / height));
-        }
+        for (var y = 0; y < h; y++)
+            for (var x = 0; x < w; x++)
+                pixels[y * w + x] = Average(data, source.Stride, left + x * cw / w, top + y * ch / h, Math.Max(1, cw / w), Math.Max(1, ch / h));
 
-        return Bitmap.Wrap(pixels, width, height);
+        return Bitmap.Wrap(pixels, w, h);
     }
 
     public static Bitmap Cover(Bitmap source, double aspect)
     {
-        var cropWidth = Math.Min(source.Width, (int)(source.Height * aspect));
-        var cropHeight = Math.Min(source.Height, (int)(source.Width / aspect));
-        var left = (source.Width - cropWidth) / 2;
-        var top = (source.Height - cropHeight) / 2;
-        var pixels = new uint[cropWidth * cropHeight];
+        var cw = Math.Min(source.Width, (int)(source.Height * aspect));
+        var ch = Math.Min(source.Height, (int)(source.Width / aspect));
+        var left = (source.Width - cw) / 2;
+        var top = (source.Height - ch) / 2;
+        var pixels = new uint[cw * ch];
         var data = source.Pixels;
 
-        for (var y = 0; y < cropHeight; y++)
-            data.Slice((top + y) * source.Stride + left, cropWidth).CopyTo(pixels.AsSpan(y * cropWidth, cropWidth));
+        for (var y = 0; y < ch; y++)
+            data.Slice((top + y) * source.Stride + left, cw).CopyTo(pixels.AsSpan(y * cw, cw));
 
-        return Bitmap.Wrap(pixels, cropWidth, cropHeight);
+        return Bitmap.Wrap(pixels, cw, ch);
     }
 
     private static uint Average(Span<uint> data, int stride, int x, int y, int w, int h)
@@ -47,7 +44,6 @@ public static class Backdrop
         var stepY = Math.Max(1, h / 4);
 
         for (var yy = y; yy < y + h; yy += stepY)
-        {
             for (var xx = x; xx < x + w; xx += stepX)
             {
                 var p = data[yy * stride + xx];
@@ -57,7 +53,6 @@ public static class Backdrop
                 b += p & 255;
                 count++;
             }
-        }
 
         return (uint)(a / count << 24 | r / count << 16 | g / count << 8 | b / count);
     }

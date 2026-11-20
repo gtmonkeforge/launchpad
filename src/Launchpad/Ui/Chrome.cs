@@ -25,7 +25,7 @@ public static class Chrome
     public static double BoldText(Canvas c, Font font, double size, double x, double centerY, string text, uint color)
     {
         c.DrawText(font, size, x + 0.6, centerY - font.LineHeight(size) / 2, text, color);
-        return c.DrawText(font, size, x, centerY - font.LineHeight(size) / 2, text, color);
+        return Text(c, font, size, x, centerY, text, color);
     }
 
     public static string Clip(Font font, double size, string text, double maxWidth)
@@ -33,37 +33,35 @@ public static class Chrome
         if (font.Measure(size, text) <= maxWidth)
             return text;
 
-        var low = 1;
-        var high = text.Length;
+        var lo = 1;
+        var hi = text.Length;
 
-        while (low < high)
+        while (lo < hi)
         {
-            var middle = (low + high + 1) / 2;
+            var mid = (lo + hi + 1) / 2;
 
-            if (font.Measure(size, text[..middle] + "...") <= maxWidth)
-                low = middle;
+            if (font.Measure(size, text[..mid] + "...") <= maxWidth)
+                lo = mid;
             else
-                high = middle - 1;
+                hi = mid - 1;
         }
 
-        if (char.IsHighSurrogate(text[low - 1]) && low > 1)
-            low--;
+        if (char.IsHighSurrogate(text[lo - 1]) && lo > 1)
+            lo--;
 
-        text = text[..low];
-
-        return text + "...";
+        return text[..lo] + "...";
     }
 
     public static List<string> Wrap(Font font, double size, string text, double maxWidth, int maxLines)
     {
         if (text.Contains('\n'))
         {
-            var paragraphs = new List<string>();
+            var all = new List<string>();
 
-            foreach (var paragraph in text.Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries))
-                paragraphs.AddRange(Wrap(font, size, paragraph, maxWidth, maxLines));
+            foreach (var para in text.Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                all.AddRange(Wrap(font, size, para, maxWidth, maxLines));
 
-            return paragraphs.Take(maxLines).ToList();
+            return all.Take(maxLines).ToList();
         }
 
         var lines = new List<string>();
@@ -72,11 +70,11 @@ public static class Chrome
 
         for (var i = 0; i < words.Length; i++)
         {
-            var attempt = line.Length == 0 ? words[i] : line + " " + words[i];
+            var joined = line.Length == 0 ? words[i] : line + " " + words[i];
 
-            if (font.Measure(size, attempt) <= maxWidth || line.Length == 0)
+            if (font.Measure(size, joined) <= maxWidth || line.Length == 0)
             {
-                line = attempt;
+                line = joined;
                 continue;
             }
 
@@ -118,13 +116,13 @@ public static class Chrome
 
     private static void Dashes(Canvas c, double x0, double y0, double x1, double y1, uint color)
     {
-        var length = Math.Max(Math.Abs(x1 - x0), Math.Abs(y1 - y0));
+        var len = Math.Max(Math.Abs(x1 - x0), Math.Abs(y1 - y0));
         var dx = x1 > x0 ? 1 : 0;
         var dy = y1 > y0 ? 1 : 0;
 
-        for (double at = 0; at < length; at += 8)
+        for (double at = 0; at < len; at += 8)
         {
-            var end = Math.Min(at + 4, length);
+            var end = Math.Min(at + 4, len);
             c.DrawLine(x0 + dx * at, y0 + dy * at, x0 + dx * end, y0 + dy * end, 1, color);
         }
     }
