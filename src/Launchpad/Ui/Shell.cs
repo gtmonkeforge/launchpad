@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using GoomeSharp;
 using Launchpad.App;
@@ -19,6 +20,7 @@ public sealed class Shell
         Router = new Router(this);
         app.Forge.SessionChanged += Invalidate;
         app.Mods.Changed += Invalidate;
+        app.Event += OnAppEvent;
     }
 
     public LaunchpadApp App { get; }
@@ -27,6 +29,7 @@ public sealed class Shell
     public ImageCache Images { get; }
     public Notifications Notifications { get; }
     public string Search { get; set; } = "";
+    public string? Progress { get; private set; }
 
     public JsonObject? User => App.Forge.User;
     public bool SignedIn => User != null;
@@ -65,9 +68,18 @@ public sealed class Shell
 
     public void SignOut() => Call("auth.signOut", []);
 
-    public void Call(string method, JsonObject args) => _ = CallAsync(method, args);
+    private void OnAppEvent(string name, object? data)
+    {
+        if (name != "progress")
+            return;
 
-    public Task<bool> CallAsync(string method, JsonObject args)
+        Progress = JsonSerializer.SerializeToNode(data).Str("message");
+        Invalidate();
+    }
+
+    public void Call(string method, JsonObject args, Action<object?>? done = null, Action<string>? failed = null) => _ = CallAsync(method, args, done, failed);
+
+    public Task<bool> CallAsync(string method, JsonObject args, Action<object?>? done = null, Action<string>? failed = null)
     {
         return Task.Run(async () =>
         {
@@ -75,12 +87,20 @@ public sealed class Shell
 
             try
             {
-                await _bridge.DispatchAsync(method, args, CancellationToken.None);
+                var result = await _bridge.DispatchAsync(method, args, CancellationToken.None);
+                done?.Invoke(result);
             }
             catch (UserFacingException ex)
             {
                 _pendingToast = ex.Message;
                 worked = false;
+                failed?.Invoke(ex.Message);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _pendingToast = ex.Message;
+                worked = false;
+                failed?.Invoke(ex.Message);
             }
 
             Invalidate();
