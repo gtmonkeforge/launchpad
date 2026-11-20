@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using GoomeSharp;
 using Launchpad.Infrastructure;
 
@@ -73,7 +72,15 @@ public sealed partial class ManageScreen : IScreen
         else if (!_allowed)
             y = DrawNotYours(ui, formWidth, y);
         else
-            y = DrawTab(ui, formWidth, y);
+            y = _tab switch
+            {
+                0 => DrawListing(ui, formWidth, y),
+                1 => DrawReleaseTab(ui, formWidth, y),
+                2 => DrawVersions(ui, formWidth, y),
+                3 => DrawChannels(ui, formWidth, y),
+                4 => DrawAccess(ui, formWidth, y),
+                _ => DrawPricing(ui, formWidth, y),
+            };
 
         ui.Pos(0, y + 40);
         ui.Custom("manage-end", 1, 1, ItemFlags.NoHit, out Item _);
@@ -116,19 +123,6 @@ public sealed partial class ManageScreen : IScreen
         }
 
         return 198;
-    }
-
-    private double DrawTab(Ui ui, double width, double y)
-    {
-        return _tab switch
-        {
-            0 => DrawListing(ui, width, y),
-            1 => DrawReleaseTab(ui, width, y),
-            2 => DrawVersions(ui, width, y),
-            3 => DrawChannels(ui, width, y),
-            4 => DrawAccess(ui, width, y),
-            _ => DrawPricing(ui, width, y),
-        };
     }
 
     private double DrawLoadError(Ui ui, double width, double y)

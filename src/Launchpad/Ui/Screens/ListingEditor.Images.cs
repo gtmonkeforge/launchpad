@@ -109,21 +109,21 @@ public sealed partial class ListingEditor
         return y + FormKit.RowHeight + 16;
     }
 
-    private double DrawShotRow(Ui ui, int index, double y, double width)
+    private double DrawShotRow(Ui ui, int i, double y, double width)
     {
-        Item row = Chrome.Hit(ui, "listing-shot-row-" + index, FormKit.Left, y, width, 34);
+        Item row = Chrome.Hit(ui, "listing-shot-row-" + i, FormKit.Left, y, width, 34);
         Chrome.Box(ui.Canvas()!, row.X, row.Y, width, 34, Palette.Radius, Palette.Surface, Palette.Line);
-        Chrome.Text(ui.Canvas()!, Fonts.Main, 13.5, row.X + 12, row.Y + 17, (index + 1) + ".  " + Chrome.Clip(Fonts.Main, 13.5, Path.GetFileName(Screenshots[index]), width - 250), Palette.Text);
+        Chrome.Text(ui.Canvas()!, Fonts.Main, 13.5, row.X + 12, row.Y + 17, (i + 1) + ".  " + Chrome.Clip(Fonts.Main, 13.5, Path.GetFileName(Screenshots[i]), width - 250), Palette.Text);
         var buttons = FormKit.Left + width - 230;
 
-        if (index > 0 && Widgets.Button(ui, "listing-shot-up-" + index, buttons, y + 3, "Up", ButtonKind.Subtle, out var upWidth, true, 28))
-            (Screenshots[index - 1], Screenshots[index]) = (Screenshots[index], Screenshots[index - 1]);
+        if (i > 0 && Widgets.Button(ui, "listing-shot-up-" + i, buttons, y + 3, "Up", ButtonKind.Subtle, out var upWidth, true, 28))
+            (Screenshots[i - 1], Screenshots[i]) = (Screenshots[i], Screenshots[i - 1]);
 
-        if (index < Screenshots.Count - 1 && Widgets.Button(ui, "listing-shot-down-" + index, buttons + 58, y + 3, "Down", ButtonKind.Subtle, out _, true, 28))
-            (Screenshots[index + 1], Screenshots[index]) = (Screenshots[index], Screenshots[index + 1]);
+        if (i < Screenshots.Count - 1 && Widgets.Button(ui, "listing-shot-down-" + i, buttons + 58, y + 3, "Down", ButtonKind.Subtle, out _, true, 28))
+            (Screenshots[i + 1], Screenshots[i]) = (Screenshots[i], Screenshots[i + 1]);
 
-        if (Widgets.Button(ui, "listing-shot-remove-" + index, buttons + 128, y + 3, "Remove", ButtonKind.Danger, out _, true, 28))
-            Screenshots.RemoveAt(index);
+        if (Widgets.Button(ui, "listing-shot-remove-" + i, buttons + 128, y + 3, "Remove", ButtonKind.Danger, out _, true, 28))
+            Screenshots.RemoveAt(i);
 
         return y + 40;
     }

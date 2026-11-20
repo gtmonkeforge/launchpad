@@ -43,19 +43,19 @@ public sealed partial class ManageScreen
         return y + 50;
     }
 
-    private double DrawTierRow(Ui ui, JsonNode tier, int index, double y, double width)
+    private double DrawTierRow(Ui ui, JsonNode tier, int i, double y, double width)
     {
-        Item row = Chrome.Hit(ui, "manage-tier-row-" + index, FormKit.Left, y, width, 52);
+        Item row = Chrome.Hit(ui, "manage-tier-row-" + i, FormKit.Left, y, width, 52);
         Canvas c = ui.Canvas()!;
         Chrome.Box(c, row.X, row.Y, width, 52, Palette.Radius, Palette.Surface, Palette.Line);
         Chrome.BoldText(c, Fonts.Main, 14.5, row.X + 16, row.Y + 18, Chrome.Clip(Fonts.Main, 14.5, tier.Str("name") ?? "", width - 300), Palette.Text);
         Chrome.Text(c, Fonts.Main, 13, row.X + 16, row.Y + 37, Format.Money(tier.Long("price_cents"), tier.Str("currency") ?? Currency) + "/month", Palette.Muted);
         var retire = Widgets.ButtonWidth("Retire");
 
-        if (Widgets.Button(ui, "manage-tier-retire-" + index, FormKit.Left + width - 12 - retire, y + 9, "Retire", ButtonKind.Danger, out _, !_busy, 34))
+        if (Widgets.Button(ui, "manage-tier-retire-" + i, FormKit.Left + width - 12 - retire, y + 9, "Retire", ButtonKind.Danger, out _, !_busy, 34))
             AskRetire(tier.Str("id") ?? "");
 
-        if (Widgets.Button(ui, "manage-tier-edit-" + index, FormKit.Left + width - 20 - retire - Widgets.ButtonWidth("Edit"), y + 9, "Edit", ButtonKind.Subtle, out _, !_busy, 34))
+        if (Widgets.Button(ui, "manage-tier-edit-" + i, FormKit.Left + width - 20 - retire - Widgets.ButtonWidth("Edit"), y + 9, "Edit", ButtonKind.Subtle, out _, !_busy, 34))
             OpenTier(tier);
 
         return y + 60;

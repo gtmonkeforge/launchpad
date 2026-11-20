@@ -60,12 +60,12 @@ public sealed partial class ManageScreen
         return y;
     }
 
-    private double DrawVersion(Ui ui, JsonNode release, int index, double y, double width)
+    private double DrawVersion(Ui ui, JsonNode release, int i, double y, double width)
     {
         var downloads = release["downloads"] as JsonArray ?? [];
         var notes = Chrome.Wrap(Fonts.Main, 13.5, release.Str("notes") ?? "", width - 40, 3);
         var height = 58 + downloads.Count * 22 + notes.Count * 20;
-        Item box = Chrome.Hit(ui, "manage-version-" + index, FormKit.Left, y, width, height);
+        Item box = Chrome.Hit(ui, "manage-version-" + i, FormKit.Left, y, width, height);
         Canvas c = ui.Canvas()!;
         Chrome.Box(c, box.X, box.Y, width, height, Palette.Radius, Palette.Surface, Palette.Line);
         Chrome.BoldText(c, Fonts.Main, 16, box.X + 18, box.Y + 24, "v" + release.Str("version"), Palette.Text);

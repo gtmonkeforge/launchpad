@@ -46,20 +46,22 @@ public sealed partial class ReleaseEditor
 
         for (var i = 0; i < _assets.Count; i++)
         {
-            var picked = _picked[i];
+            var on = _picked[i];
             ui.Pos(FormKit.Left, y);
 
-            if (ui.Checkbox(_assets[i].Name + "  " + UploadFiles.Size(_assets[i].Size), ref picked))
-                _picked[i] = picked;
+            if (ui.Checkbox(_assets[i].Name + "  " + UploadFiles.Size(_assets[i].Size), ref on))
+                _picked[i] = on;
 
             y += 32;
         }
 
-        if (_assets.Count > 0 && Widgets.Button(ui, "release-github-copy", FormKit.Left, y + 2, "Copy selected", ButtonKind.Primary, out _, !_githubBusy, 34))
-            CopyAssets();
-
         if (_assets.Count > 0)
+        {
+            if (Widgets.Button(ui, "release-github-copy", FormKit.Left, y + 2, "Copy selected", ButtonKind.Primary, out _, !_githubBusy, 34))
+                CopyAssets();
+
             y += 42;
+        }
 
         if (_githubStatus.Length > 0)
             y = FormKit.Hint(ui, _githubStatus, y, width);

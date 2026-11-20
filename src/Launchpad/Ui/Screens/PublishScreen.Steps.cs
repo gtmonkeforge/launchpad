@@ -12,7 +12,7 @@ public sealed partial class PublishScreen
         y = _step switch
         {
             0 => DrawIdentity(ui, width, y),
-            1 => DrawPage(ui, width, y),
+            1 => _listing.Draw(ui, width, y),
             _ => DrawRelease(ui, width, y),
         };
 
@@ -60,8 +60,6 @@ public sealed partial class PublishScreen
         ui.Checkbox("Install through the injector", ref _injector);
         return Hint(ui, "For closed-source mods. Files are encrypted and can only be installed through Launchpad, never downloaded. Each loader takes one DLL. Injector mods are always reviewed by a person. This can't be undone.", y + 36, width) + 8;
     }
-
-    private double DrawPage(Ui ui, double width, double y) => _listing.Draw(ui, width, y);
 
     private double DrawRelease(Ui ui, double width, double y)
     {

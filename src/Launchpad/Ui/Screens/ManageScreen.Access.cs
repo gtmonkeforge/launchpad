@@ -76,7 +76,7 @@ public sealed partial class ManageScreen
         if (FormKit.ActionButton(ui, "manage-slug-save", "Save URL", FormKit.Left, y - 6, false, out _, !_busy))
         {
             var slug = _slug.Trim();
-            Run("Custom URL saved.", async () => await _shell.App.Forge.SendJsonAsync(HttpMethod.Patch, ModUrl("/url"), new { custom_slug = slug }));
+            Run("Custom URL saved.", () => _shell.App.Forge.SendJsonAsync(HttpMethod.Patch, ModUrl("/url"), new { custom_slug = slug }));
         }
 
         return y + 50;
@@ -154,13 +154,8 @@ public sealed partial class ManageScreen
             _confirm.Ask("Unlist " + _mod.Str("name"), "Only you will be able to see this mod. Players who already installed it keep it, but they won't get updates.", "Unlist", () => ApplyVisibility("private"));
 
         if (_shell.IsAdmin && Widgets.Button(ui, "manage-delete", FormKit.Left + unlistWidth + 10, y, "Delete permanently", ButtonKind.Danger, out _, !_busy, 36))
-            _confirm.Ask("Delete " + _mod.Str("name"), "Delete this mod and all of its releases for good? This can't be undone.", "Delete mod", DeleteMod);
+            _confirm.Ask("Delete " + _mod.Str("name"), "Delete this mod and all of its releases for good? This can't be undone.", "Delete mod", () => Run("Mod deleted.", async () => await _shell.App.Forge.SendJsonAsync(HttpMethod.Delete, "/api/v1/admin/mods/" + Uri.EscapeDataString(_guid), null), () => _shell.Router.Push(new Route(Page.Library))));
 
         return y + 50;
-    }
-
-    private void DeleteMod()
-    {
-        Run("Mod deleted.", async () => await _shell.App.Forge.SendJsonAsync(HttpMethod.Delete, "/api/v1/admin/mods/" + Uri.EscapeDataString(_guid), null), () => _shell.Router.Push(new Route(Page.Library)));
     }
 }
