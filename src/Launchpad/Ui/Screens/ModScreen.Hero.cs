@@ -23,12 +23,30 @@ public sealed partial class ModScreen
         var textWidth = width - IconSize - 20 - ActionWidth - 20;
         Chrome.BoldText(c, Fonts.Main, 28, textLeft, area.Y + 18, Chrome.Clip(Fonts.Main, 28, _mod.Str("name") ?? "", textWidth), Palette.Text);
         DrawMeta(c, textLeft, area.Y + 56, textWidth);
+        DrawAuthorLink(ui, SideMargin + IconSize + 20, y + 42);
 
         if (badges.Length > 0)
             DrawBadgeRow(c, badges, textLeft, area.Y + 76);
 
         DrawActions(ui, SideMargin + width - ActionWidth, y);
         return y + height;
+    }
+
+    private void DrawAuthorLink(Ui ui, double x, double y)
+    {
+        var id = _mod!["author"].Str("id");
+
+        if (id == null)
+            return;
+
+        var width = 29 + Fonts.Main.Measure(15, _mod["author"].Str("name") ?? "");
+        Item link = Chrome.Hit(ui, "mod-author-link", x, y, width, 28);
+
+        if (link.Hovered)
+            ui.Canvas()!.DrawRect(link.X + 29, link.Y + 21, width - 29, 1, Palette.Muted);
+
+        if (link.Clicked)
+            _shell.Router.Push(new Route(Page.Profile, id));
     }
 
     private void DrawIcon(Canvas c, double x, double y)

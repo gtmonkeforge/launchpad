@@ -45,6 +45,8 @@ public static class ModCard
 
     public static bool Draw(Ui ui, Shell shell, ModSummary mod, double x, double y, double width, double height)
     {
+        var authorWidth = Fonts.Main.Measure(13.5, "by " + mod.AuthorName);
+        var authorClicked = AuthorLink(ui, shell, mod, x + Pad, y + 108, authorWidth);
         Item item = Chrome.Hit(ui, "card-" + mod.Id, x, y, width, height);
         Canvas c = ui.Canvas()!;
         var left = item.X;
@@ -57,7 +59,7 @@ public static class ModCard
         DrawBadges(c, mod, left, top + AfterAuthor + 8, width);
         DrawSummary(c, mod, left, top + BadgesBottom(mod, width) + 10, width);
         DrawFooter(c, mod, left, top, width, height);
-        return item.Clicked;
+        return item.Clicked && !authorClicked;
     }
 
     private static void DrawTop(Canvas c, Shell shell, ModSummary mod, double left, double top, double width)
@@ -83,9 +85,27 @@ public static class ModCard
         Chrome.Text(c, Fonts.Main, 12.5, pillLeft + 9, top + Pad + 12.5, label, color);
     }
 
-    private static void DrawAuthor(Canvas c, ModSummary mod, double x, double centerY)
+    private static bool AuthorLink(Ui ui, Shell shell, ModSummary mod, double x, double centerY, double width)
     {
-        x += Chrome.Text(c, Fonts.Main, 13.5, x, centerY, "by " + mod.AuthorName, Palette.Muted) + 8;
+        if (mod.AuthorId.Length == 0)
+            return false;
+
+        Item link = Chrome.Hit(ui, "card-author-" + mod.Id, x - 2, centerY - 11, width + 4, 22);
+
+        if (link.Hovered)
+            ui.Canvas()!.DrawRect(link.X + 2, link.Y + 17, width, 1, Palette.Muted);
+
+        if (!link.Clicked)
+            return false;
+
+        shell.Router.Push(new Route(Page.Profile, mod.AuthorId));
+        return true;
+    }
+
+    private static double DrawAuthor(Canvas c, ModSummary mod, double x, double centerY)
+    {
+        var nameWidth = Chrome.Text(c, Fonts.Main, 13.5, x, centerY, "by " + mod.AuthorName, Palette.Muted);
+        x += nameWidth + 8;
 
         if (mod.AuthorIsAdmin)
         {
@@ -98,6 +118,8 @@ public static class ModCard
             Icons.Check(c, x + 6, centerY, Palette.Good);
             Chrome.BoldText(c, Fonts.Main, 12.5, x + 16, centerY, "Verified", Palette.Good);
         }
+
+        return nameWidth;
     }
 
     private static void DrawBadges(Canvas c, ModSummary mod, double left, double top, double width)

@@ -19,7 +19,8 @@ public sealed record ModSummary(
     DateTimeOffset UpdatedAt,
     string Version,
     string? Logo,
-    string? Price)
+    string? Price,
+    string AuthorId = "")
 {
     public static ModSummary From(JsonNode mod, string? myId)
     {
@@ -58,6 +59,7 @@ public sealed record ModSummary(
             updated,
             mod.Str("current_version") ?? "",
             mod.Str("logo"),
-            price);
+            price,
+            author.Str("id") ?? "");
     }
 }
