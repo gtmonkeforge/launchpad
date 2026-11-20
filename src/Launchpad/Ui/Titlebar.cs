@@ -277,11 +277,14 @@ public sealed class Titlebar(Shell shell)
         ui.Separator();
         GuestLabel(ui, "Site");
 
-        if (GuestRow(ui, "Get the apps", Icons.Rocket))
+        if (GuestRow(ui, "Appearance", Glyphs.Swatches))
         {
             ui.PopupClose();
-            shell.OpenForge("/software");
+            shell.Router.Push(new Route(Page.Settings, "appearance"));
         }
+
+        if (GuestRow(ui, "Get the apps", Icons.Rocket))
+            Go(ui, Page.Software);
 
         ui.Separator();
 
