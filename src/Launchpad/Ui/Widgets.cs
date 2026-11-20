@@ -84,7 +84,7 @@ public static class Widgets
         Chrome.Dashed(c, card.X, card.Y, width, height, Palette.RadiusLarge, Palette.LineStrong);
         var center = card.X + width / 2;
         Chrome.BoldText(c, Fonts.Main, 18, center - Fonts.Main.Measure(18, title) / 2, card.Y + 62, title, Palette.Text);
-        var lines = Chrome.Wrap(Fonts.Main, 14.5, text, Math.Min(width - 48, 520), 3);
+        var lines = Chrome.Wrap(Fonts.Main, 14.5, text, Math.Min(width - 48, 900), 3);
 
         for (var i = 0; i < lines.Count; i++)
             Chrome.Text(c, Fonts.Main, 14.5, center - Fonts.Main.Measure(14.5, lines[i]) / 2, card.Y + 94 + i * 22, lines[i], Palette.Muted);

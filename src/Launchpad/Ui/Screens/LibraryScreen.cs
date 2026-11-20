@@ -65,7 +65,7 @@ public sealed partial class LibraryScreen : IScreen
     {
         Widgets.PageHead(ui.Canvas()!, _ox + SideMargin, _oy + 27, "Library");
         var wanted = Widgets.EmptyState(ui, "library-nogame", SideMargin, 100, width - SideMargin - RightGutter, "Choose your game folder",
-            "Launchpad finds Gorilla Tag in Steam (SteamVR) and Meta Horizon Link libraries automatically, or you can pick the folder yourself.", "Choose game folder");
+            "Launchpad finds Gorilla Tag in Steam (SteamVR) and Meta Horizon Link libraries automatically, or you can pick the folder yourself.", "Choose game folder", Glyphs.Game);
 
         if (wanted)
             shell.Router.Push(new Route(Page.Game));
