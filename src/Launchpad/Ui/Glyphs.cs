@@ -75,7 +75,7 @@ public static class Glyphs
         c.DrawCircle(x - 3.5, y + 3.8, 0.8, color);
     }
 
-    public static void Palette(Canvas c, double x, double y, uint color)
+    public static void Swatches(Canvas c, double x, double y, uint color)
     {
         c.DrawRing(x, y, 6.5, 1.3, color);
         c.DrawCircle(x - 2.5, y - 1, 1, color);

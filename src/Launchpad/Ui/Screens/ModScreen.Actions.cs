@@ -35,7 +35,7 @@ public sealed partial class ModScreen
             return ("Working…", false, null);
 
         if (!GameValid)
-            return ("Choose your game folder", true, () => _shell.Router.Push(new Route(Page.Settings)));
+            return ("Choose your game folder", true, () => _shell.Router.Push(new Route(Page.Game)));
 
         if (_record != null && _record.Loader == loader.Id() && _record.Version != version)
             return ("Update to v" + version, true, Install);

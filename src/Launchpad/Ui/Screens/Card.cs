@@ -64,6 +64,12 @@ public sealed class Card
         Chrome.Text(_canvas, Fonts.Main, 16, _x + left + size / 2 - Fonts.Main.Measure(16, letters) / 2, _y + top + size / 2, letters, Palette.Text);
     }
 
+    public void PillRight(double right, double top, string text, uint color)
+    {
+        var width = Fonts.Main.Measure(12.5, text) + 18;
+        Widgets.Pill(_canvas, _x + right - width, _y + top, text, color);
+    }
+
     public static double HintHeight(string text, double width)
     {
         return Chrome.Wrap(Fonts.Main, 14, text, width - Padding * 2, 8).Count * LineHeight;

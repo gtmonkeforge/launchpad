@@ -6,20 +6,39 @@ namespace Launchpad.Ui.Screens;
 
 using Ui = GoomeSharp.Ui;
 
-public sealed partial class SettingsScreen(Shell shell) : IScreen
+public sealed partial class SettingsScreen : IScreen
 {
-    private const double SideMargin = 30;
-    private const double TopMargin = 87;
-    private const double NavWidth = 221;
-    private const double RightGutter = 57;
+    private const double TopMargin = SettingsNav.TopMargin;
 
-    private static readonly string[] Sections = ["Account", "Emails", "Access keys", "Devices", "Security and payments"];
+    private static readonly (string Key, NavEntry Entry)[] Sections =
+    [
+        ("appearance", new NavEntry("Appearance", Glyphs.Swatches)),
+        ("keys", new NavEntry("Access keys", Glyphs.Key)),
+        ("channels", new NavEntry("Release channels", Glyphs.Lock)),
+        ("purchases", new NavEntry("Purchases", Glyphs.Tray)),
+        ("payouts", new NavEntry("Payouts", Glyphs.Wallet)),
+        ("devices", new NavEntry("Devices", Glyphs.Server)),
+        ("account", new NavEntry("Account", Glyphs.User)),
+        ("security", new NavEntry("Sign-in & security", Glyphs.Lock)),
+        ("emails", new NavEntry("Email", Glyphs.Bell)),
+        ("game", new NavEntry("Game & mod loader", Glyphs.Game)),
+    ];
 
+    private static readonly NavEntry[] Entries = Sections.Select(section => section.Entry).ToArray();
+
+    private readonly Shell shell;
     private int _section;
     private int _loadedSection = -1;
     private int _request;
     private string? _error;
     private JsonNode? _data;
+
+    public SettingsScreen(Shell shell, string? arg)
+    {
+        this.shell = shell;
+        _section = Math.Max(0, Array.FindIndex(Sections, section => section.Key == arg));
+        InitAppearance();
+    }
 
     public void Reload()
     {
@@ -32,43 +51,70 @@ public sealed partial class SettingsScreen(Shell shell) : IScreen
         ui.Pos(0, 0);
         ui.Custom("settings-origin", 1, 1, ItemFlags.NoHit, out _);
 
-        Item title = Chrome.Hit(ui, "settings-title", SideMargin, TopMargin - 60, 300, 36);
-        Chrome.BoldText(ui.Canvas()!, Fonts.Main, 28, title.X, title.Y + 18, "Settings", Palette.Text);
+        SettingsNav.Header(ui, "settings-title", Sections[_section].Entry.Label, null);
+        var clicked = SettingsNav.Draw(ui, "settings-nav-", Entries, _section, TopMargin);
 
-        var left = SideMargin + NavWidth + 24;
-        var panelWidth = Math.Min(720, Math.Max(300, width - left - RightGutter));
-        DrawNav(ui);
-        var bottom = shell.SignedIn ? DrawSection(ui, left, panelWidth) : DrawSignedOut(ui, left, panelWidth);
+        if (clicked >= 0)
+            Open(clicked);
 
-        ui.Pos(0, Math.Max(bottom, TopMargin + 300) + 40);
+        var bottom = DrawSection(ui, SettingsNav.ContentLeft, SettingsNav.ContentWidth(width));
+        ui.Pos(0, Math.Max(bottom, TopMargin + Entries.Length * SettingsNav.RowHeight) + 40);
         ui.Custom("settings-end", 1, 1, ItemFlags.NoHit, out _);
         ui.ScrollEnd();
     }
 
-    private void DrawNav(Ui ui)
+    private void Open(int index)
     {
-        for (var i = 0; i < Sections.Length; i++)
+        if (Sections[index].Key == "game")
         {
-            Item item = Chrome.Hit(ui, "settings-nav-" + i, SideMargin, TopMargin + i * 40, NavWidth, 34);
-            Canvas c = ui.Canvas()!;
-
-            if (_section == i)
-                c.DrawRRect(item.X, item.Y, NavWidth, 34, 8, Palette.Surface2);
-            else if (item.Hovered)
-                c.DrawRRect(item.X, item.Y, NavWidth, 34, 8, Palette.Surface);
-
-            Chrome.Text(c, Fonts.Main, 15, item.X + 14, item.Y + 17, Sections[i], _section == i || item.Hovered ? Palette.Text : Palette.Muted);
-
-            if (item.Clicked)
-                _section = i;
+            shell.Router.Push(new Route(Page.Game));
+            return;
         }
+
+        _section = index;
     }
+
+    private double DrawSection(Ui ui, double left, double width)
+    {
+        if (_section == 0)
+            return DrawAppearance(ui, left, width);
+
+        if (!shell.SignedIn)
+            return DrawSignedOut(ui, left, width);
+
+        if (_loadedSection != _section)
+            StartLoad();
+
+        return Sections[_section].Key switch
+        {
+            "keys" => DrawKeys(ui, left, width),
+            "channels" => DrawChannels(ui, left, width),
+            "purchases" => DrawPurchases(ui, left, width),
+            "payouts" => DrawPayouts(ui, left, width),
+            "devices" => DrawDevices(ui, left, width),
+            "account" => DrawAccount(ui, left, width),
+            "security" => DrawSecurity(ui, left, width),
+            _ => DrawEmails(ui, left, width),
+        };
+    }
+
+    private static readonly Dictionary<string, (string Title, string Text)> SignedOut = new()
+    {
+        ["keys"] = ("Access keys", "Sign in to create keys for publishing from scripts and GitHub Actions."),
+        ["channels"] = ("Unlock a release channel", "Sign in to redeem a channel code shared by a mod author."),
+        ["purchases"] = ("Purchases", "Sign in to see the mods you've bought."),
+        ["payouts"] = ("Get paid", "Connect a Stripe account to sell mods and receive donations. Stripe handles your bank and identity details; MonkeForge never sees them."),
+        ["devices"] = ("Injector devices", "No devices yet. Sign in to Launchpad to add this computer."),
+        ["account"] = ("Not signed in", "Sign in to publish mods, rate, comment and sync settings."),
+        ["security"] = ("Sign-in & security", "Sign in to manage your email, password and passkeys."),
+        ["emails"] = ("What we email you", "Sign in to choose which emails MonkeForge sends you."),
+    };
 
     private double DrawSignedOut(Ui ui, double left, double width)
     {
-        var text = "Sign in to publish mods, rate, comment and sync settings.";
+        var (title, text) = SignedOut[Sections[_section].Key];
         var height = 116 + Card.HintHeight(text, width);
-        Card card = Card.Open(ui, "settings-signed-out", left, TopMargin, width, height, "Not signed in");
+        Card card = Card.Open(ui, "settings-signed-out", left, TopMargin, width, height, title);
         card.Hint(0, 46, width, text);
 
         if (Card.Button(ui, "Sign in", left + Card.Padding, TopMargin + height - 56, 120))
@@ -77,29 +123,21 @@ public sealed partial class SettingsScreen(Shell shell) : IScreen
         return TopMargin + height;
     }
 
-    private double DrawSection(Ui ui, double left, double width)
+    private static string? PathFor(string key) => key switch
     {
-        if (_loadedSection != _section)
-            StartLoad();
-
-        return _section switch
-        {
-            0 => DrawAccount(ui, left, width),
-            1 => DrawEmails(ui, left, width),
-            2 => DrawKeys(ui, left, width),
-            3 => DrawDevices(ui, left, width),
-            _ => DrawSecurity(ui, left, width),
-        };
-    }
-
-    private static readonly string?[] Paths = ["/api/v1/account", "/api/v1/account", "/api/v1/api-keys", "/api/v1/injector/devices", null];
+        "emails" => "/api/v1/account",
+        "keys" => "/api/v1/api-keys",
+        "devices" => "/api/v1/injector/devices",
+        "payouts" => "/api/v1/payouts",
+        _ => null,
+    };
 
     private void StartLoad()
     {
         _loadedSection = _section;
         _data = null;
         _error = null;
-        var path = Paths[_section];
+        var path = PathFor(Sections[_section].Key);
 
         if (path == null)
             return;

@@ -121,13 +121,13 @@ public sealed partial class SettingsScreen
             return bottom;
 
         var items = Items();
-        var intro = $"Launchpad devices that can sign in as you, up to {_data.Long("max_devices")}. Remove one if you no longer use it.";
+        var intro = $"Computers where Launchpad can install your injector mods. You can have up to {_data.Long("max_devices")}. Remove one you no longer use to make room.";
         var height = 62 + Card.HintHeight(intro, width) + Math.Max(1, items.Count) * 56;
-        Card card = Card.Open(ui, "devices-panel", left, TopMargin, width, height, "Devices");
+        Card card = Card.Open(ui, "devices-panel", left, TopMargin, width, height, "Injector devices");
         var top = 44 + card.Hint(0, 44, width, intro) + 8;
 
         if (items.Count == 0)
-            card.Hint(0, top, width, "No devices yet.");
+            card.Hint(0, top, width, "No devices yet. Sign in to Launchpad to add this computer.");
 
         for (var i = 0; i < items.Count; i++)
         {
@@ -147,9 +147,9 @@ public sealed partial class SettingsScreen
 
     private double DrawSecurity(Ui ui, double left, double width)
     {
-        var text = "Passkeys, your email address and password, sign out everywhere, payouts, purchases and private release channels are tied to monkeforge.org, so manage them there.";
+        var text = "Your email address, password, passkeys and signing out everywhere are tied to monkeforge.org, so manage them there.";
         var height = 116 + Card.HintHeight(text, width);
-        Card card = Card.Open(ui, "security-panel", left, TopMargin, width, height, "Security and payments");
+        Card card = Card.Open(ui, "security-panel", left, TopMargin, width, height, "Sign-in & security");
         card.Hint(0, 46, width, text);
 
         if (Card.Button(ui, "Open on monkeforge.org", left + Card.Padding, TopMargin + height - 56, 220))

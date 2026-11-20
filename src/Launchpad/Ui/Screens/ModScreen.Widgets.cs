@@ -27,7 +27,7 @@ public sealed partial class ModScreen
         var hovered = item.Hovered && enabled;
 
         if (style == ButtonStyle.Primary && enabled)
-            c.DrawRRect(item.X, item.Y, w, h, Palette.Radius, hovered ? 0xFFE46A49 : Palette.Accent);
+            c.DrawRRect(item.X, item.Y, w, h, Palette.Radius, hovered ? Palette.AccentHot : Palette.Accent);
         else
             Chrome.Box(c, item.X, item.Y, w, h, Palette.Radius, hovered ? Palette.Hover : Palette.Surface2, style == ButtonStyle.Danger && enabled ? 0x66F08585 : Palette.LineStrong);
 
