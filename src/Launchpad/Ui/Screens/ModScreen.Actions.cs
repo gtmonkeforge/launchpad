@@ -10,6 +10,7 @@ using Ui = GoomeSharp.Ui;
 public sealed partial class ModScreen
 {
     private const double ActionWidth = 190;
+    private const double ActionsWidth = 260;
 
     private string[] ReleaseLoaders()
     {
@@ -26,10 +27,7 @@ public sealed partial class ModScreen
             return ("No releases yet", false, null);
 
         if (Locked)
-        {
-            var price = _mod.Long("price_cents") > 0 ? "Buy · " + Format.Money(_mod.Long("price_cents"), _mod.Str("currency") ?? "usd") : "See tiers";
-            return (price, true, () => _shell.OpenForge("/view/" + Uri.EscapeDataString(_guid)));
-        }
+            return LockedPrimary();
 
         if (_working)
             return ("Working…", false, null);
@@ -64,7 +62,7 @@ public sealed partial class ModScreen
             notes.Add((_failure, Palette.Bad));
 
         if (Locked)
-            notes.Add(("Buy this mod on monkeforge.org, then install it here. Buy once to install every future update.", Palette.Muted));
+            notes.Add((PurchaseOptions().Any(option => option.Monthly) ? "Buy it once or pick a monthly tier." : "Buy once to install every future update.", Palette.Muted));
         else if (!GameValid)
             notes.Add(("Launchpad needs to know where Gorilla Tag is installed.", Palette.Muted));
         else if (_record != null && _record.Loader != loader.Id())
@@ -86,42 +84,75 @@ public sealed partial class ModScreen
             _confirmRemove = true;
     }
 
-    private void DrawActions(Ui ui, double x, double y)
+    private sealed record SideButton(string Id, string Text, ButtonStyle Style, bool Enabled, Action Click, Action<Canvas, double, double, uint>? Glyph);
+
+    private List<SideButton> SideButtons()
+    {
+        var buttons = new List<SideButton>
+        {
+            new("mod-share", "Share", ButtonStyle.Plain, true, CopyLink, Glyphs.Link),
+        };
+
+        if (_mod.Str("source_url") is { } source)
+            buttons.Add(new("mod-source", "Source", ButtonStyle.Plain, true, () => _shell.Call("shell.open", new JsonObject { ["url"] = source }), Glyphs.Code));
+
+        if (CanDonate)
+            buttons.Add(new("mod-donate", "Donate", ButtonStyle.Plain, true, OpenDonate, null));
+
+        if (_owner)
+            buttons.Add(new("mod-manage", "Manage", ButtonStyle.Plain, true, OpenManage, Glyphs.Gear));
+
+        if (_record != null && !Locked && _record.Loader == _shell.App.Settings.Loader.Id() && Primary().Label != "Remove")
+            buttons.Add(new("mod-remove", _confirmRemove ? "Click again to remove" : "Remove", ButtonStyle.Danger, !_working, RemoveClick, Glyphs.Trash));
+
+        return buttons;
+    }
+
+    private void CopyLink()
+    {
+        _shell.Window.Goome.Clipboard = new Uri(_shell.App.Forge.BaseUri, "/view/" + Uri.EscapeDataString(_guid)).ToString();
+        _shell.Toast("Link copied.");
+    }
+
+    private static List<(SideButton Button, double Width, int Row, double Left)> SideLayout(List<SideButton> buttons)
+    {
+        var placed = new List<(SideButton, double, int, double)>();
+        var used = 0.0;
+        var row = 0;
+
+        foreach (var button in buttons)
+        {
+            var width = Fonts.Main.Measure(13.5, button.Text) + (button.Glyph == null ? 30 : 46);
+
+            if (used > 0 && used + width > ActionsWidth)
+            {
+                row++;
+                used = 0;
+            }
+
+            placed.Add((button, width, row, ActionsWidth - used - width));
+            used += width + 8;
+        }
+
+        return placed;
+    }
+
+    private double ActionsHeight() => 48 + (SideLayout(SideButtons()).Max(item => item.Row) + 1) * 40 - 8;
+
+    private void DrawActions(Ui ui, double areaLeft, double y)
     {
         var (label, enabled, click) = Primary();
         var removing = label == "Remove";
         var text = removing && _confirmRemove ? "Click again to remove" : label;
         var style = removing ? ButtonStyle.Danger : ButtonStyle.Primary;
 
-        if (Button(ui, "mod-primary", text, x, y, ActionWidth, 40, style, enabled, removing ? Glyphs.Trash : null))
+        if (Button(ui, "mod-primary", text, areaLeft + ActionsWidth - ActionWidth, y, ActionWidth, 40, style, enabled, removing ? Glyphs.Trash : null))
             click?.Invoke();
 
-        var source = _mod.Str("source_url");
-        var shareWidth = Fonts.Main.Measure(13.5, "Share") + 46;
-        var sourceWidth = Fonts.Main.Measure(13.5, "Source") + 46;
-        var right = x + ActionWidth;
-        var top = y + 48;
-        var alsoRemove = _record != null && !Locked && !removing && _record.Loader == _shell.App.Settings.Loader.Id();
-
-        if (source != null)
+        foreach (var (button, width, row, left) in SideLayout(SideButtons()))
         {
-            right -= sourceWidth;
-
-            if (Button(ui, "mod-source", "Source", right, top, sourceWidth, 32, ButtonStyle.Plain, true, Glyphs.Code))
-                _shell.Call("shell.open", new JsonObject { ["url"] = source });
-
-            right -= 8;
+            if (Button(ui, button.Id, button.Text, areaLeft + left, y + 48 + row * 40, width, 32, button.Style, button.Enabled, button.Glyph))
+                button.Click();
         }
-
-        right -= shareWidth;
-
-        if (Button(ui, "mod-share", "Share", right, top, shareWidth, 32, ButtonStyle.Plain, true, Glyphs.Link))
-        {
-            _shell.Window.Goome.Clipboard = new Uri(_shell.App.Forge.BaseUri, "/view/" + Uri.EscapeDataString(_guid)).ToString();
-            _shell.Toast("Link copied.");
-        }
-
-        if (alsoRemove && Button(ui, "mod-remove", _confirmRemove ? "Click again to remove" : "Remove", x, top + 40, ActionWidth, 32, ButtonStyle.Danger, !_working, Glyphs.Trash))
-            RemoveClick();
     }
 }

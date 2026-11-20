@@ -14,13 +14,13 @@ public sealed partial class ModScreen
     private double DrawHero(Ui ui, double width, double y)
     {
         var badges = (_mod!["badges"] as JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToArray() ?? [];
-        var height = badges.Length > 0 ? 118.0 : 92.0;
+        var height = Math.Max(badges.Length > 0 ? 118.0 : 92.0, ActionsHeight());
         Item area = Area(ui, "mod-hero", SideMargin, y, width, height);
         Canvas c = ui.Canvas()!;
         DrawIcon(c, area.X, area.Y);
 
         var textLeft = area.X + IconSize + 20;
-        var textWidth = width - IconSize - 20 - ActionWidth - 20;
+        var textWidth = width - IconSize - 20 - ActionsWidth - 20;
         Chrome.BoldText(c, Fonts.Main, 28, textLeft, area.Y + 18, Chrome.Clip(Fonts.Main, 28, _mod.Str("name") ?? "", textWidth), Palette.Text);
         DrawMeta(c, textLeft, area.Y + 56, textWidth);
         DrawAuthorLink(ui, SideMargin + IconSize + 20, y + 42);
@@ -28,7 +28,7 @@ public sealed partial class ModScreen
         if (badges.Length > 0)
             DrawBadgeRow(c, badges, textLeft, area.Y + 76);
 
-        DrawActions(ui, SideMargin + width - ActionWidth, y);
+        DrawActions(ui, SideMargin + width - ActionsWidth, y);
         return y + height;
     }
 

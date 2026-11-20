@@ -22,7 +22,21 @@ public sealed partial class ModScreen
         y = DrawDownloadCard(ui, left, width, y) + 14;
         y = DrawShield(ui, left, width, y) + 14;
         y = DrawDetails(ui, left, width, y) + 14;
-        return DrawLinks(ui, left, width, y);
+        y = DrawLinks(ui, left, width, y);
+        return DrawReportLink(ui, left, width, y + 6);
+    }
+
+    private double DrawReportLink(Ui ui, double left, double width, double y)
+    {
+        Item link = Chrome.Hit(ui, "mod-report", left, y, width, 30);
+        Canvas c = ui.Canvas()!;
+        var color = link.Hovered ? Palette.Bad : Palette.Faint;
+        Chrome.Text(c, Fonts.Main, 13.5, link.X + 4, link.Y + 15, "Report this mod", color);
+
+        if (link.Clicked)
+            _reportOpen = true;
+
+        return y + 30;
     }
 
     private double DrawDownloadCard(Ui ui, double left, double width, double y)
@@ -31,7 +45,8 @@ public sealed partial class ModScreen
         var wrapped = notes.Select(note => WrapLines(Fonts.Main, 13.5, note.Text, width - 40, 6)).ToList();
         var channels = _mod!["channels"] as JsonArray ?? [];
         var whatsNew = WrapLines(Fonts.Main, 13.5, Current.Str("notes") ?? "", width - 40, 8);
-        var height = 74 + 46 + wrapped.Sum(lines => lines.Count * 21 + 8) + (channels.Count > 1 ? 82 : 0) + (whatsNew.Count > 0 ? 34 + (_whatsNew ? whatsNew.Count * 21 + 8 : 0) : 0) + 4;
+        var multi = Locked && _shell.SignedIn && PurchaseOptions().Count > 1;
+        var height = 74 + 46 + (multi ? 46 : 0) + wrapped.Sum(lines => lines.Count * 21 + 8) + (channels.Count > 1 ? 82 : 0) + (whatsNew.Count > 0 ? 34 + (_whatsNew ? whatsNew.Count * 21 + 8 : 0) : 0) + 4;
 
         Item card = Area(ui, "mod-download", left, y, width, height);
         Canvas c = ui.Canvas()!;
@@ -47,14 +62,26 @@ public sealed partial class ModScreen
             Chrome.Text(c, Fonts.Mono, 12.5, card.X + width - 20 - Fonts.Mono.Measure(12.5, date), card.Y + 28, date, Palette.Faint);
         }
 
-        var (label, enabled, click) = Primary();
+        var buy = 74.0;
+
+        if (multi)
+        {
+            var options = PurchaseOptions();
+            _choice = Math.Min(_choice, options.Count - 1);
+            ui.Pos(left + 20, y + 74);
+            ui.Size(width - 40, 38);
+            ui.Combo("##mod-buy-choice", ref _choice, options.Select(option => option.Label).ToList());
+            buy += 46;
+        }
+
+        var (label, enabled, click) = multi ? ("Buy", !_buying, () => StartPurchase(PurchaseOptions()[Math.Min(_choice, PurchaseOptions().Count - 1)])) : Primary();
         var removing = label == "Remove";
         var text = removing && _confirmRemove ? "Click again to remove" : label;
 
-        if (Button(ui, "mod-card-primary", text, left + 20, y + 74, width - 40, 36, removing ? ButtonStyle.Danger : ButtonStyle.Primary, enabled, removing ? Glyphs.Trash : null))
+        if (Button(ui, "mod-card-primary", text, left + 20, y + buy, width - 40, 36, removing ? ButtonStyle.Danger : ButtonStyle.Primary, enabled, removing ? Glyphs.Trash : null))
             click?.Invoke();
 
-        var yy = DrawNotes(ui, notes, wrapped, left + 20, y + 74 + 46);
+        var yy = DrawNotes(ui, notes, wrapped, left + 20, y + buy + 46);
 
         if (_working)
         {
