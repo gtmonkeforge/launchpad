@@ -16,8 +16,8 @@ public sealed class Titlebar(Shell shell)
         ("Admin", Page.Admin),
     ];
 
-    private const double NotificationWidth = 340;
-    private const double GuestMenuWidth = 238;
+    private const double NotifWidth = 340;
+    private const double GuestWidth = 238;
     private const double SignInWidth = 66;
 
     private bool _searchFocusWanted;
@@ -36,7 +36,16 @@ public sealed class Titlebar(Shell shell)
 
         var leftEnd = DrawLeft(ui, 6);
         var rightStart = DrawRight(ui, width, leftEnd);
-        DrawDragArea(ui, leftEnd, rightStart - leftEnd, height);
+
+        if (rightStart - leftEnd <= 0)
+            return;
+
+        Item drag = Chrome.Hit(ui, "titlebar-drag", leftEnd, 0, rightStart - leftEnd, height - 1);
+
+        if (drag.DoubleClicked)
+            ToggleMaximize();
+        else if (drag.Pressed)
+            shell.Window.Goome.Drag();
     }
 
     private double DrawLeft(Ui ui, double x)
@@ -110,14 +119,14 @@ public sealed class Titlebar(Shell shell)
         {
             x -= 34;
             Profile(ui, x);
-            x -= 7 + 34;
+            x -= 41;
             Bell(ui, x);
         }
         else
         {
             x -= SignInWidth;
             SignInButton(ui, x);
-            x -= 6 + 34;
+            x -= 40;
             GuestMenuButton(ui, x);
         }
 
@@ -166,8 +175,8 @@ public sealed class Titlebar(Shell shell)
         if (item.Clicked)
         {
             ui.Custom("notifications-seed", 0, 0, ItemFlags.NoHit, out _);
-            ui.Pos(item.X + 34 - NotificationWidth - 20, item.Y + 34);
-            ui.Custom("notifications-anchor", NotificationWidth + 20, 1, ItemFlags.NoHit, out _);
+            ui.Pos(item.X + 34 - NotifWidth - 20, item.Y + 34);
+            ui.Custom("notifications-anchor", NotifWidth + 20, 1, ItemFlags.NoHit, out _);
             ui.PopupOpen("notifications");
         }
 
@@ -180,7 +189,7 @@ public sealed class Titlebar(Shell shell)
             return;
 
         var items = shell.Notifications.Items;
-        ui.Custom("notifications-width", NotificationWidth, 1, ItemFlags.NoHit, out _);
+        ui.Custom("notifications-width", NotifWidth, 1, ItemFlags.NoHit, out _);
         ui.Label("Notifications");
 
         if (items.Count > 0 && ui.Button("Mark all read"))
@@ -222,8 +231,7 @@ public sealed class Titlebar(Shell shell)
         {
             c.DrawCircle(item.X + 17, item.Y + 17, 17, Palette.Surface2);
             var letters = Format.Initials(name);
-            var textWidth = Fonts.Main.Measure(13, letters);
-            Chrome.Text(c, Fonts.Main, 13, item.X + 17 - textWidth / 2, item.Y + 17, letters, Palette.Text);
+            Chrome.Text(c, Fonts.Main, 13, item.X + 17 - Fonts.Main.Measure(13, letters) / 2, item.Y + 17, letters, Palette.Text);
         }
 
         if (item.Clicked)
@@ -253,8 +261,8 @@ public sealed class Titlebar(Shell shell)
         if (item.Clicked)
         {
             ui.Custom("guest-seed", 0, 0, ItemFlags.NoHit, out _);
-            ui.Pos(item.X + 34 - GuestMenuWidth - 20, item.Y + 34);
-            ui.Custom("guest-anchor", GuestMenuWidth + 20, 1, ItemFlags.NoHit, out _);
+            ui.Pos(item.X + 34 - GuestWidth - 20, item.Y + 34);
+            ui.Custom("guest-anchor", GuestWidth + 20, 1, ItemFlags.NoHit, out _);
             ui.PopupOpen("guest");
         }
 
@@ -278,10 +286,7 @@ public sealed class Titlebar(Shell shell)
         GuestLabel(ui, "Site");
 
         if (GuestRow(ui, "Appearance", Glyphs.Swatches))
-        {
-            ui.PopupClose();
-            shell.Router.Push(new Route(Page.Settings, "appearance"));
-        }
+            Go(ui, Page.Settings, "appearance");
 
         if (GuestRow(ui, "Get the apps", Icons.Rocket))
             Go(ui, Page.Software);
@@ -289,10 +294,7 @@ public sealed class Titlebar(Shell shell)
         ui.Separator();
 
         if (GuestRow(ui, "Sign in", Icons.User))
-        {
-            ui.PopupClose();
-            shell.Router.Push(new Route(Page.SignIn));
-        }
+            Go(ui, Page.SignIn);
 
         if (GuestRow(ui, "Create an account", Icons.Plus))
         {
@@ -303,28 +305,28 @@ public sealed class Titlebar(Shell shell)
         ui.PopupEnd();
     }
 
-    private void Go(Ui ui, Page page)
+    private void Go(Ui ui, Page page, string? arg = null)
     {
         ui.PopupClose();
-        shell.Router.Push(new Route(page));
+        shell.Router.Push(new Route(page, arg));
     }
 
     private static void GuestLabel(Ui ui, string text)
     {
-        ui.Custom("guest-label-" + text, GuestMenuWidth, 24, ItemFlags.NoHit, out Item item);
+        ui.Custom("guest-label-" + text, GuestWidth, 24, ItemFlags.NoHit, out Item item);
         Chrome.Text(ui.Canvas()!, Fonts.Main, 12, item.X + 4, item.Y + 14, text, Palette.Faint);
     }
 
     private static bool GuestRow(Ui ui, string text, Action<Canvas, double, double, uint> icon)
     {
-        ui.Custom("guest-row-" + text, GuestMenuWidth, 34, ItemFlags.None, out Item item);
+        ui.Custom("guest-row-" + text, GuestWidth, 34, ItemFlags.None, out Item item);
         Canvas c = ui.Canvas()!;
 
         if (item.Hovered)
+        {
             ui.Goome.Cursor = CursorShape.Hand;
-
-        if (item.Hovered)
-            c.DrawRRect(item.X, item.Y, GuestMenuWidth, 34, 7, Palette.Hover);
+            c.DrawRRect(item.X, item.Y, GuestWidth, 34, 7, Palette.Hover);
+        }
 
         icon(c, item.X + 16, item.Y + 17, Palette.Muted);
         Chrome.Text(c, Fonts.Main, 13.5, item.X + 36, item.Y + 17, text, Palette.Text);
@@ -341,22 +343,13 @@ public sealed class Titlebar(Shell shell)
         ui.Separator();
 
         if (ui.Selectable("Your profile", false))
-        {
-            ui.PopupClose();
-            shell.Router.Push(new Route(Page.Profile));
-        }
+            Go(ui, Page.Profile);
 
         if (ui.Selectable("Settings", false))
-        {
-            ui.PopupClose();
-            shell.Router.Push(new Route(Page.Settings));
-        }
+            Go(ui, Page.Settings);
 
         if (ui.Selectable("Game & mod loader", false))
-        {
-            ui.PopupClose();
-            shell.Router.Push(new Route(Page.Game));
-        }
+            Go(ui, Page.Game);
 
         if (ui.Selectable("Sign out", false))
         {
@@ -394,18 +387,5 @@ public sealed class Titlebar(Shell shell)
 
         if (result == 2 && shell.Router.Current.Page != Page.Browse)
             shell.Router.Push(new Route(Page.Browse));
-    }
-
-    private void DrawDragArea(Ui ui, double x, double width, double height)
-    {
-        if (width <= 0)
-            return;
-
-        Item item = Chrome.Hit(ui, "titlebar-drag", x, 0, width, height - 1);
-
-        if (item.DoubleClicked)
-            ToggleMaximize();
-        else if (item.Pressed)
-            shell.Window.Goome.Drag();
     }
 }
