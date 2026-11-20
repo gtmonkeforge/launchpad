@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using GoomeSharp;
 using Launchpad.Mods;
 
@@ -7,16 +8,15 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class GameSettingsScreen
 {
-    private const string LoaderHint = "Mods are installed for one loader at a time. Switching keeps both loaders' mods; only the chosen one runs.";
-
     private double DrawLoader(Ui ui, double x, double y, double width)
     {
-        var hintLines = HintLines(LoaderHint, width);
+        var loaderHint = "Mods are installed for one loader at a time. Switching keeps both loaders' mods; only the chosen one runs.";
+        var hintLines = HintLines(loaderHint, width);
         var segmentTop = 56 + hintLines * 21 + 6;
         var height = segmentTop + 36 + 24;
 
         Panel(ui, "loader-panel", x, y, width, height, "Mod loader", Glyphs.Layers);
-        Hint(x, y + 56, width, LoaderHint);
+        Hint(x, y + 56, width, loaderHint);
         Segment(ui, x + 22, y + segmentTop, ModLoader.Bepinex5, 0);
         Segment(ui, x + 22, y + segmentTop, ModLoader.MelonLoader, 1);
         return y + height;
@@ -57,8 +57,8 @@ public sealed partial class GameSettingsScreen
         var name = loader.DisplayName();
         Chrome.Text(c, Fonts.Main, 14, item.X + buttonWidth / 2 - Fonts.Main.Measure(14, name) / 2, item.Y + 18, name, selected ? Palette.Text : Palette.Muted);
 
-        if (item.Clicked && _working == null)
-            SetLoader(loader);
+        if (item.Clicked && _working == null && !selected)
+            Work("loader-set", "loader.set", new JsonObject { ["loader"] = loader.Id() }, "Switched to " + loader.DisplayName() + ".");
     }
 
     private void StatusGrid(Canvas c, double x, double y, double width)
@@ -85,7 +85,7 @@ public sealed partial class GameSettingsScreen
         var label = working ? "Installing..." : (_status?.RuntimeInstalled == true ? "Reinstall " : "Install ") + name;
 
         if (Widgets.Button(ui, "loader-install", x, y, label, ButtonKind.Subtle, out var width, _working == null))
-            InstallLoader();
+            Work("loader", "loader.install", [], Loader.DisplayName() + " is installed.");
 
         if (working && _progress.Length > 0)
             Chrome.Text(ui.Canvas()!, Fonts.Main, 14, _ox + x + width + 14, _oy + y + 17, _progress, Palette.Muted);
@@ -101,7 +101,7 @@ public sealed partial class GameSettingsScreen
         var label = _working == "proton" ? "Setting up..." : "Set up launch options";
 
         if (Widgets.Button(ui, "proton-setup", x + 22, y + 56 + lines * 21 + 6, label, ButtonKind.Subtle, out _, _working == null && GameValid))
-            SetUpProton();
+            Work("proton", "proton.configure", [], "Steam launch options are set up.");
 
         return y + height;
     }

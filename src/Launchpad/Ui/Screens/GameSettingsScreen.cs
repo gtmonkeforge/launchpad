@@ -156,13 +156,16 @@ public sealed partial class GameSettingsScreen : IScreen
 
     private double DrawSomewhere(Ui ui, double x, double y, double width)
     {
-        var text = $"Choose the folder that contains {GameLocator.Executable}.";
-        var height = 56 + 24 + 34 + 24;
+        const double height = 56 + 24 + 34 + 24;
         Panel(ui, "somewhere-panel", x, y, width, height, "Somewhere else?", Glyphs.Tray);
-        Hint(x, y + 66, width, text);
+        Hint(x, y + 66, width, $"Choose the folder that contains {GameLocator.Executable}.");
 
         if (Widgets.Button(ui, "game-choose-folder", x + 22, y + height - 58, "Choose folder...", ButtonKind.Subtle, out _))
-            OpenFolderDialog();
+        {
+            _typedPath = "";
+            _folderOpen = true;
+            _focusPath = true;
+        }
 
         return y + height;
     }

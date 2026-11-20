@@ -10,13 +10,6 @@ public sealed partial class GameSettingsScreen
     private string _typedPath = "";
     private bool _focusPath;
 
-    private void OpenFolderDialog()
-    {
-        _typedPath = "";
-        _folderOpen = true;
-        _focusPath = true;
-    }
-
     private static string Cleaned(string path)
     {
         path = path.Trim().Trim('"', '\'');
@@ -40,9 +33,7 @@ public sealed partial class GameSettingsScreen
         ui.Width(520);
 
         if (_focusPath)
-        {
             ui.SetFocus();
-        }
 
         if (ui.Input("##game-path", ref _typedPath, 1024))
             _focusPath = false;

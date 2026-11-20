@@ -99,21 +99,4 @@ public sealed partial class GameSettingsScreen
         Work("game", "game.select", new JsonObject { ["path"] = path }, "Game folder saved.");
     }
 
-    private void SetLoader(ModLoader loader)
-    {
-        if (loader == Loader)
-            return;
-
-        Work("loader-set", "loader.set", new JsonObject { ["loader"] = loader.Id() }, "Switched to " + loader.DisplayName() + ".");
-    }
-
-    private void InstallLoader()
-    {
-        Work("loader", "loader.install", [], Loader.DisplayName() + " is installed.");
-    }
-
-    private void SetUpProton()
-    {
-        Work("proton", "proton.configure", [], "Steam launch options are set up.");
-    }
 }
