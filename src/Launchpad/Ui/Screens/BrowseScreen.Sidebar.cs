@@ -11,8 +11,6 @@ public sealed partial class BrowseScreen
     private static readonly string[] CapabilityNames = ["Auto-updating", "Extensions", "Networking"];
     private static readonly string[] FormatNames = ["Any format", "DLL", "ZIP"];
 
-    private const double WidgetHalf = 14;
-
     private double SidebarBottom;
 
     private void DrawSidebar(Ui ui, double top)
@@ -71,7 +69,7 @@ public sealed partial class BrowseScreen
     private static void Title(Ui ui, string text, double centerY)
     {
         Item item = Chrome.Hit(ui, "side-title-" + text, SideMargin, centerY - 9, 200, 18);
-        Chrome.BoldText(ui.Canvas()!, Fonts.Main, 13, item.X, item.Y + 9, text, Palette.Faint);
+        Chrome.BoldText(ui.Canvas()!, Fonts.Main, 12.5, item.X, item.Y + 9, text, Palette.Faint);
     }
 
     private bool CategoryRow(Ui ui, string category, double top)
@@ -86,29 +84,62 @@ public sealed partial class BrowseScreen
             c.DrawRRect(item.X, item.Y, SidebarWidth, 34, 8, Palette.Surface);
 
         Icons.Category(c, category, item.X + 16, item.Y + 17, selected ? Palette.Accent : Palette.Muted);
-        Chrome.Text(c, Fonts.Main, 15, item.X + 34, item.Y + 17, category.Length == 0 ? "All mods" : category, selected || item.Hovered ? Palette.Text : Palette.Muted);
+        Chrome.Text(c, Fonts.Main, 13.5, item.X + 34, item.Y + 17, category.Length == 0 ? "All mods" : category, selected || item.Hovered ? Palette.Text : Palette.Muted);
         return item.Clicked && !selected;
     }
 
     private static bool Check(Ui ui, string label, ref bool value, double centerY)
     {
-        ui.Pos(SideMargin, centerY - WidgetHalf);
-        return ui.Checkbox(label, ref value);
+        if (!Choice(ui, "check-" + label, label, value, false, centerY))
+            return false;
+
+        value = !value;
+        return true;
     }
 
     private static bool RadioGroup(Ui ui, string id, string[] labels, int[] values, ref int selected, double firstCenter)
     {
         var changed = false;
-        ui.PushId(id);
 
         for (var i = 0; i < labels.Length; i++)
         {
-            ui.Pos(SideMargin, firstCenter + i * 27.7 - WidgetHalf);
-            changed |= ui.Radio(labels[i], ref selected, values[i]);
+            if (Choice(ui, id + "-" + labels[i], labels[i], selected == values[i], true, firstCenter + i * 27.7) && selected != values[i])
+            {
+                selected = values[i];
+                changed = true;
+            }
         }
 
-        ui.PopId();
         return changed;
+    }
+
+    private static bool Choice(Ui ui, string id, string label, bool on, bool round, double centerY)
+    {
+        Item item = Chrome.Hit(ui, id, SideMargin - 4, centerY - 12, SidebarWidth + 4, 24);
+        Canvas c = ui.Canvas()!;
+        var x = item.X + 4;
+        var y = item.Y + 12;
+        var ring = item.Hovered ? 0xFF5A5E66 : Palette.LineStrong;
+
+        if (round)
+        {
+            c.DrawCircle(x + 8, y, 8, on ? Palette.Accent : ring);
+            c.DrawCircle(x + 8, y, on ? 8 : 6.5, on ? Palette.Accent : 0xFFF4F4F6);
+
+            if (on)
+                c.DrawCircle(x + 8, y, 2.6, 0xFFFFFFFF);
+        }
+        else
+        {
+            c.DrawRRect(x, y - 8, 16, 16, 3.5, on ? Palette.Accent : ring);
+            c.DrawRRect(x + (on ? 0 : 1.5), y - 8 + (on ? 0 : 1.5), on ? 16 : 13, on ? 16 : 13, on ? 3.5 : 2.5, on ? Palette.Accent : 0xFFF4F4F6);
+
+            if (on)
+                Icons.Check(c, x + 8, y, 0xFFFFFFFF);
+        }
+
+        Chrome.Text(c, Fonts.Main, 13.5, x + 26, y, label, item.Hovered || on ? Palette.Text : Palette.Muted);
+        return item.Clicked;
     }
 
     private static bool Pick(Ui ui, string id, string[] names, ref int selected, double top)
