@@ -127,6 +127,9 @@ public sealed partial class SettingsScreen : IScreen
         if (Card.Button(ui, "Sign in", left + Card.Padding, TopMargin + height - 56, 120))
             shell.Router.Push(new Route(Page.SignIn));
 
+        if (Card.Button(ui, "Create an account", left + Card.Padding + 128, TopMargin + height - 56, 190))
+            shell.OpenForge("/signup");
+
         return TopMargin + height;
     }
 
