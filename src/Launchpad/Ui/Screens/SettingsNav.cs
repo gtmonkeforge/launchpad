@@ -10,8 +10,8 @@ public sealed record NavEntry(string Label, NavGlyph Glyph);
 
 public static class SettingsNav
 {
-    public const double SideMargin = 30;
-    public const double TopMargin = 87;
+    public const double SideMargin = PageFrame.SideMargin;
+    public const double TopMargin = PageFrame.TopMargin;
     public const double Width = 210;
     public const double RowHeight = 36;
     public const double ContentGap = 24;
@@ -48,12 +48,6 @@ public static class SettingsNav
 
     public static void Header(Ui ui, string id, string title, string? subtitle)
     {
-        ui.Pos(SideMargin, 27);
-        ui.Custom(id, 600, 36, ItemFlags.NoHit, out Item head);
-        Canvas c = ui.Canvas()!;
-        Widgets.PageHead(c, head.X, head.Y, title);
-
-        if (subtitle != null)
-            Chrome.Text(c, Fonts.Main, 14.5, head.X, head.Y + 51, subtitle, Palette.Muted);
+        PageFrame.Title(ui, id, SideMargin, 27, title, subtitle);
     }
 }

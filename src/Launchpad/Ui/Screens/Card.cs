@@ -41,15 +41,11 @@ public sealed class Card
         return lines.Count * LineHeight;
     }
 
-    public void Text(double left, double centerY, double size, string text, uint color, bool mono = false)
-    {
+    public void Text(double left, double centerY, double size, string text, uint color, bool mono = false) =>
         Chrome.Text(_canvas, mono ? Fonts.Mono : Fonts.Main, size, _x + left, _y + centerY, text, color);
-    }
 
-    public void Bold(double left, double centerY, double size, string text, uint color)
-    {
+    public void Bold(double left, double centerY, double size, string text, uint color) =>
         Chrome.BoldText(_canvas, Fonts.Main, size, _x + left, _y + centerY, text, color);
-    }
 
     public void Avatar(Bitmap? picture, double left, double top, double size, string name)
     {
@@ -70,15 +66,9 @@ public sealed class Card
         Widgets.Pill(_canvas, _x + right - width, _y + top, text, color);
     }
 
-    public double Pill(double left, double top, string text, uint color)
-    {
-        return Widgets.Pill(_canvas, _x + left, _y + top, text, color);
-    }
+    public double Pill(double left, double top, string text, uint color) => Widgets.Pill(_canvas, _x + left, _y + top, text, color);
 
-    public static double HintHeight(string text, double width)
-    {
-        return Chrome.Wrap(Fonts.Main, 14, text, width - Padding * 2, 8).Count * LineHeight;
-    }
+    public static double HintHeight(string text, double width) => Chrome.Wrap(Fonts.Main, 14, text, width - Padding * 2, 8).Count * LineHeight;
 
     public static bool Button(Ui ui, string text, double x, double y, double width)
     {
