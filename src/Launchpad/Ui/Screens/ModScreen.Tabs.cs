@@ -62,7 +62,7 @@ public sealed partial class ModScreen
             Item tab = Chrome.Hit(ui, "mod-tab-" + i, left + x, y, tabWidth, 42);
             Canvas c = ui.Canvas()!;
             var active = _tab == i;
-            var color = active ? Palette.Text : tab.Hovered ? Palette.Text : Palette.Muted;
+            var color = active || tab.Hovered ? Palette.Text : Palette.Muted;
             Chrome.Text(c, Fonts.Main, 14.5, tab.X + 16, tab.Y + 21, label, color);
 
             if (count.Length > 0)
@@ -87,7 +87,7 @@ public sealed partial class ModScreen
 
     private double DrawOverview(Ui ui, double left, double width, double y)
     {
-        var screenshots = (_mod!["screenshots"] as JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToArray() ?? [];
+        var screenshots = Strings(_mod!["screenshots"]);
 
         if (screenshots.Length > 0)
             y = DrawGallery(ui, left, width, y, screenshots) + 14;

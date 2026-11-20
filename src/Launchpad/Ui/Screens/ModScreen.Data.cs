@@ -29,6 +29,9 @@ public sealed partial class ModScreen
         }
     }
 
+    private static string[] Strings(JsonNode? node) =>
+        (node as JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToArray() ?? [];
+
     private bool Locked => _mod.Bool("gated") && !_mod.Bool("owned");
 
     private bool GameValid => GameLocator.IsGameFolder(_shell.App.Settings.GamePath);

@@ -13,7 +13,7 @@ public sealed partial class ModScreen
 
     private double DrawHero(Ui ui, double width, double y)
     {
-        var badges = (_mod!["badges"] as JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToArray() ?? [];
+        var badges = Strings(_mod!["badges"]);
         var height = Math.Max(badges.Length > 0 ? 98.0 : 92.0, ActionsHeight());
         Item area = Area(ui, "mod-hero", SideMargin, y, width, height);
         Canvas c = ui.Canvas()!;

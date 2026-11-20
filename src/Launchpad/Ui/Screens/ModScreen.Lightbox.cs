@@ -8,11 +8,9 @@ public sealed partial class ModScreen
 {
     private bool _lightbox;
 
-    private string[] Screenshots => (_mod?["screenshots"] as System.Text.Json.Nodes.JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToArray() ?? [];
-
     private void DrawLightbox(Ui ui)
     {
-        var shots = Screenshots;
+        var shots = Strings(_mod?["screenshots"]);
 
         if (shots.Length == 0 || !ui.ModalBegin("Screenshot " + (_shot + 1) + " of " + shots.Length, ref _lightbox))
             return;

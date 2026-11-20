@@ -13,17 +13,17 @@ public sealed partial class ModScreen
 
     private string[] ReleaseLoaders()
     {
-        var list = (Current?["loaders"] as JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToArray();
-        return list is { Length: > 0 } ? list : ["bepinex5"];
+        var list = Strings(Current?["loaders"]);
+        return list.Length > 0 ? list : ["bepinex5"];
     }
 
     private (string Label, bool Enabled, Action? Click) Primary()
     {
-        var loader = _shell.App.Settings.Loader;
-        var version = Current.Str("version");
-
         if (Current == null)
             return ("No releases yet", false, null);
+
+        var loader = _shell.App.Settings.Loader;
+        var version = Current.Str("version");
 
         if (Locked)
             return LockedPrimary();
@@ -38,7 +38,7 @@ public sealed partial class ModScreen
             return ("Update to v" + version, true, Install);
 
         if (_record != null)
-            return ("Remove", !_working, RemoveClick);
+            return ("Remove", true, RemoveClick);
 
         if (!ReleaseLoaders().Contains(loader.Id()))
             return ("Install", false, null);
@@ -61,7 +61,7 @@ public sealed partial class ModScreen
             notes.Add((_failure, Palette.Bad));
 
         if (Locked)
-            notes.Add((PurchaseOptions().Any(option => option.Monthly) ? "Buy it once or pick a monthly tier." : "Buy once to install every future update.", Palette.Muted));
+            notes.Add((LockNote(), Palette.Muted));
         else if (!GameValid)
             notes.Add(("Launchpad needs to know where Gorilla Tag is installed.", Palette.Muted));
         else if (_record != null && _record.Loader != loader.Id())
@@ -74,6 +74,8 @@ public sealed partial class ModScreen
 
         return notes;
     }
+
+    private string LockNote() => PurchaseOptions().Any(option => option.Monthly) ? "Buy it once or pick a monthly tier." : "Buy once to install every future update.";
 
     private void RemoveClick()
     {
@@ -98,7 +100,7 @@ public sealed partial class ModScreen
             buttons.Add(new("mod-source", "Source", ButtonStyle.Plain, true, () => _shell.Call("shell.open", new JsonObject { ["url"] = source }), Glyphs.Code));
 
         if (_owner)
-            buttons.Add(new("mod-manage", "Manage", ButtonStyle.Plain, true, OpenManage, Glyphs.Gear));
+            buttons.Add(new("mod-manage", "Manage", ButtonStyle.Plain, true, () => _shell.Router.Push(new Route(Page.Manage, _guid)), Glyphs.Gear));
 
         if (_record != null && !Locked && _record.Loader == _shell.App.Settings.Loader.Id() && Primary().Label != "Remove")
             buttons.Add(new("mod-remove", _confirmRemove ? "Click again to remove" : "Remove", ButtonStyle.Danger, !_working, RemoveClick, Glyphs.Trash));

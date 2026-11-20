@@ -41,7 +41,7 @@ public sealed partial class ModScreen
 
     private double DrawDownloadCard(Ui ui, double left, double width, double y)
     {
-        var lockText = Locked ? PurchaseOptions().Any(option => option.Monthly) ? "Buy it once or pick a monthly tier." : "Buy once to install every future update." : null;
+        var lockText = Locked ? LockNote() : null;
         var notes = Notes().Where(note => note.Text != lockText).ToList();
         var wrapped = notes.Select(note => WrapLines(Fonts.Main, 13.5, note.Text, width - 40, 6)).ToList();
         var channels = _mod!["channels"] as JsonArray ?? [];
@@ -199,7 +199,12 @@ public sealed partial class ModScreen
             top += heights[i];
         }
 
-        DrawGuidCopy(ui, left + 20 + DetailLabel, y + 56, valueWidth, heights[0]);
+        if (Chrome.Hit(ui, "mod-guid-copy", left + 20 + DetailLabel, y + 56, valueWidth, heights[0]).Clicked)
+        {
+            _shell.Window.Goome.Clipboard = _mod.Str("guid") ?? "";
+            _shell.Toast("GUID copied.");
+        }
+
         Glyphs.Copy(ui.Canvas()!, card.X + width - 28, card.Y + 56 + 19, Palette.Faint);
         return y + height;
     }
@@ -242,17 +247,6 @@ public sealed partial class ModScreen
 
         for (var i = 0; i < lines.Count; i++)
             Chrome.Text(c, font, 13, x, top + 19 + i * 17, lines[i], Palette.Text);
-    }
-
-    private void DrawGuidCopy(Ui ui, double x, double y, double width, double height)
-    {
-        Item hit = Chrome.Hit(ui, "mod-guid-copy", x, y, width, height);
-
-        if (!hit.Clicked)
-            return;
-
-        _shell.Window.Goome.Clipboard = _mod.Str("guid") ?? "";
-        _shell.Toast("GUID copied.");
     }
 
     private double DrawLinks(Ui ui, double left, double width, double y)

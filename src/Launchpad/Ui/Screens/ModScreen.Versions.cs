@@ -15,22 +15,19 @@ public sealed partial class ModScreen
         var releases = _mod!["releases"] as JsonArray ?? [];
 
         if (releases.Count == 0)
-            return DrawEmptyVersions(ui, left, width, y);
+        {
+            Item box = Area(ui, "mod-no-releases", left, y, width, 100);
+            Canvas c = ui.Canvas()!;
+            Chrome.Box(c, box.X, box.Y, width, 100, Palette.RadiusLarge, Palette.Surface, Palette.Line);
+            Chrome.BoldText(c, Fonts.Main, 17, box.X + 22, box.Y + 36, "No releases yet", Palette.Text);
+            Chrome.Text(c, Fonts.Main, 14, box.X + 22, box.Y + 66, "Releases published to this channel will appear here.", Palette.Muted);
+            return y + 100;
+        }
 
         for (var i = 0; i < releases.Count; i++)
             y = DrawRelease(ui, left, width, y, releases[i]!, i) + 12;
 
         return y;
-    }
-
-    private double DrawEmptyVersions(Ui ui, double left, double width, double y)
-    {
-        Item box = Area(ui, "mod-no-releases", left, y, width, 100);
-        Canvas c = ui.Canvas()!;
-        Chrome.Box(c, box.X, box.Y, width, 100, Palette.RadiusLarge, Palette.Surface, Palette.Line);
-        Chrome.BoldText(c, Fonts.Main, 17, box.X + 22, box.Y + 36, "No releases yet", Palette.Text);
-        Chrome.Text(c, Fonts.Main, 14, box.X + 22, box.Y + 66, "Releases published to this channel will appear here.", Palette.Muted);
-        return y + 100;
     }
 
     private double DrawRelease(Ui ui, double left, double width, double y, JsonNode release, int index)

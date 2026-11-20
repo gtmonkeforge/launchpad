@@ -43,6 +43,4 @@ public sealed partial class ModScreen
             }
         });
     }
-
-    private void OpenManage() => _shell.Router.Push(new Route(Page.Manage, _guid));
 }

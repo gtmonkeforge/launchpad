@@ -26,10 +26,8 @@ public sealed partial class ModScreen : IScreen
         _channel = "stable";
 
         foreach (var pair in parts.Length > 1 ? parts[1].Split('&') : [])
-        {
             if (pair.StartsWith("channel=", StringComparison.Ordinal))
                 _channel = Uri.UnescapeDataString(pair["channel=".Length..]);
-        }
 
         shell.App.Mods.Changed += LoadInstalled;
         Load();
@@ -37,10 +35,7 @@ public sealed partial class ModScreen : IScreen
 
     public void Reload() => Load();
 
-    public void Dispose()
-    {
-        _shell.App.Mods.Changed -= LoadInstalled;
-    }
+    public void Dispose() => _shell.App.Mods.Changed -= LoadInstalled;
 
     public void Draw(Ui ui, double width, double height)
     {
@@ -108,7 +103,14 @@ public sealed partial class ModScreen : IScreen
         var top = y;
 
         if (Status != "approved")
-            y = DrawNotice(ui, width, y) + 12;
+        {
+            var text = Status == "pending" ? "This mod is awaiting review before it becomes publicly available." : "This mod is not publicly available.";
+            Item box = Area(ui, "mod-notice", SideMargin, y, width, 42);
+            Canvas nc = ui.Canvas()!;
+            Chrome.Box(nc, box.X, box.Y, width, 42, Palette.Radius, 0x14E5B85C, 0x5CE5B85C);
+            Chrome.Text(nc, Fonts.Main, 14, box.X + 16, box.Y + 21, text, Palette.Warn);
+            y += 54;
+        }
 
         y = DrawBanner(ui, width, y);
         y = DrawHero(ui, width, y) + 16;
@@ -146,28 +148,17 @@ public sealed partial class ModScreen : IScreen
     private Bitmap? _bannerSource;
     private double _bannerWidth;
 
-    private double DrawNotice(Ui ui, double width, double y)
-    {
-        var text = Status == "pending" ? "This mod is awaiting review before it becomes publicly available." : "This mod is not publicly available.";
-        Item box = Area(ui, "mod-notice", SideMargin, y, width, 42);
-        Canvas c = ui.Canvas()!;
-        Chrome.Box(c, box.X, box.Y, width, 42, Palette.Radius, 0x14E5B85C, 0x5CE5B85C);
-        Chrome.Text(c, Fonts.Main, 14, box.X + 16, box.Y + 21, text, Palette.Warn);
-        return y + 42;
-    }
-
     private string? Status => _mod.Str("status");
 
     private double DrawStats(Ui ui, double width, double y)
     {
         var loaders = _mod!["loaders"] is JsonArray list && list.Count > 0 ? list.Count : 1;
-        var updated = Current == null ? "-" : Format.Ago(ParseDate(Current.Str("released_at")));
         var cells = new (string Label, string Value)[]
         {
             ("Downloads", Format.Number(_mod.Long("downloads"))),
             ("Rating", _rating),
             ("Version", _mod.Str("current_version") is { Length: > 0 } version ? version : "-"),
-            ("Updated", updated),
+            ("Updated", Current == null ? "-" : Format.Ago(ParseDate(Current.Str("released_at")))),
             ("Loaders", loaders.ToString()),
         };
 
