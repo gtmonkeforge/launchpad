@@ -4,24 +4,25 @@ using Launchpad.Infrastructure;
 
 namespace Launchpad.Ui.Screens;
 
-public sealed record ModSummary(
-    string Id,
-    string Guid,
-    string Name,
-    string Description,
-    string Category,
-    string? Status,
-    string AuthorName,
-    bool AuthorIsAdmin,
-    bool AuthorIsVerified,
-    string[] Badges,
-    long Downloads,
-    DateTimeOffset UpdatedAt,
-    string Version,
-    string? Logo,
-    string? Price,
-    string AuthorId = "")
+public sealed record ModSummary
 {
+    public string Id { get; init; } = "";
+    public string Guid { get; init; } = "";
+    public string Name { get; init; } = "";
+    public string Description { get; init; } = "";
+    public string Category { get; init; } = "";
+    public string? Status { get; init; }
+    public string AuthorName { get; init; } = "";
+    public bool AuthorIsAdmin { get; init; }
+    public bool AuthorIsVerified { get; init; }
+    public string[] Badges { get; init; } = [];
+    public long Downloads { get; init; }
+    public DateTimeOffset UpdatedAt { get; init; }
+    public string Version { get; init; } = "";
+    public string? Logo { get; init; }
+    public string? Price { get; init; }
+    public string AuthorId { get; init; } = "";
+
     public static ModSummary From(JsonNode mod, string? myId)
     {
         JsonNode? author = mod["author"];
@@ -44,22 +45,24 @@ public sealed record ModSummary(
         var badges = mod["badges"] is JsonArray list ? list.Select(badge => badge?.GetValue<string>() ?? "").ToArray() : [];
         DateTimeOffset.TryParse(mod.Str("updated_at"), CultureInfo.InvariantCulture, out var updated);
 
-        return new ModSummary(
-            mod.Str("id") ?? guid,
-            guid,
-            mod.Str("name") ?? guid,
-            Format.PlainText(mod.Str("description")),
-            mod.Str("category") ?? "",
-            mod.Str("status"),
-            author.Str("name") ?? "",
-            author.Bool("is_admin"),
-            author.Bool("is_verified"),
-            badges,
-            mod.Long("downloads"),
-            updated,
-            mod.Str("current_version") ?? "",
-            mod.Str("logo"),
-            price,
-            author.Str("id") ?? "");
+        return new ModSummary
+        {
+            Id = mod.Str("id") ?? guid,
+            Guid = guid,
+            Name = mod.Str("name") ?? guid,
+            Description = Format.PlainText(mod.Str("description")),
+            Category = mod.Str("category") ?? "",
+            Status = mod.Str("status"),
+            AuthorName = author.Str("name") ?? "",
+            AuthorIsAdmin = author.Bool("is_admin"),
+            AuthorIsVerified = author.Bool("is_verified"),
+            Badges = badges,
+            Downloads = mod.Long("downloads"),
+            UpdatedAt = updated,
+            Version = mod.Str("current_version") ?? "",
+            Logo = mod.Str("logo"),
+            Price = price,
+            AuthorId = author.Str("id") ?? "",
+        };
     }
 }

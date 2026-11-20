@@ -55,9 +55,28 @@ public static class ModCard
 
         DrawTop(c, shell, mod, left, top, width);
         Chrome.BoldText(c, Fonts.Main, 17, left + Pad, top + 85, Chrome.Clip(Fonts.Main, 17, mod.Name, width - 2 * Pad), item.Hovered ? Palette.Accent : Palette.Text);
-        DrawAuthor(c, mod, left + Pad, top + 108);
+        var byX = left + Pad;
+        var byY = top + 108;
+        byX += Chrome.Text(c, Fonts.Main, 13.5, byX, byY, "by " + mod.AuthorName, Palette.Muted) + 8;
+
+        if (mod.AuthorIsAdmin)
+        {
+            Icons.Shield(c, byX + 6, byY, Palette.Admin);
+            byX += 16 + Chrome.BoldText(c, Fonts.Main, 12.5, byX + 16, byY, "Admin", Palette.Admin) + 8;
+        }
+
+        if (mod.AuthorIsVerified)
+        {
+            Icons.Check(c, byX + 6, byY, Palette.Good);
+            Chrome.BoldText(c, Fonts.Main, 12.5, byX + 16, byY, "Verified", Palette.Good);
+        }
+
         DrawBadges(c, mod, left, top + AfterAuthor + 8, width);
-        DrawSummary(c, mod, left, top + BadgesBottom(mod, width) + 10, width);
+        var lines = Chrome.Wrap(Fonts.Main, 14, mod.Description, width - 2 * Pad, 2);
+
+        for (var i = 0; i < lines.Count; i++)
+            Chrome.Text(c, Fonts.Main, 14, left + Pad, top + BadgesBottom(mod, width) + 10 + 11 + i * 23.5, lines[i], Palette.Muted);
+
         DrawFooter(c, mod, left, top, width, height);
         return item.Clicked && !authorClicked;
     }
@@ -102,26 +121,6 @@ public static class ModCard
         return true;
     }
 
-    private static double DrawAuthor(Canvas c, ModSummary mod, double x, double centerY)
-    {
-        var nameWidth = Chrome.Text(c, Fonts.Main, 13.5, x, centerY, "by " + mod.AuthorName, Palette.Muted);
-        x += nameWidth + 8;
-
-        if (mod.AuthorIsAdmin)
-        {
-            Icons.Shield(c, x + 6, centerY, Palette.Admin);
-            x += 16 + Chrome.BoldText(c, Fonts.Main, 12.5, x + 16, centerY, "Admin", Palette.Admin) + 8;
-        }
-
-        if (mod.AuthorIsVerified)
-        {
-            Icons.Check(c, x + 6, centerY, Palette.Good);
-            Chrome.BoldText(c, Fonts.Main, 12.5, x + 16, centerY, "Verified", Palette.Good);
-        }
-
-        return nameWidth;
-    }
-
     private static void DrawBadges(Canvas c, ModSummary mod, double left, double top, double width)
     {
         var x = left + Pad;
@@ -139,23 +138,12 @@ public static class ModCard
 
             c.DrawRRect(x, y, chip, ChipHeight, 7, 0x4DE8C886);
             c.DrawRRect(x + 1, y + 1, chip - 2, ChipHeight - 2, 6, Palette.Surface);
-            Star(c, x + 14, y + ChipHeight / 2, 0xFFE8C886);
+            var sx = x + 14;
+            var sy = y + ChipHeight / 2;
+            c.DrawPoly([sx, sy - 5, sx + 1.4, sy - 1.4, sx + 5, sy, sx + 1.4, sy + 1.4, sx, sy + 5, sx - 1.4, sy + 1.4, sx - 5, sy, sx - 1.4, sy - 1.4], 0xFFE8C886);
             Chrome.Text(c, Fonts.Main, 13, x + 24, y + ChipHeight / 2, badge, 0xFFE8C886);
             x += chip + 5;
         }
-    }
-
-    private static void Star(Canvas c, double x, double y, uint color)
-    {
-        c.DrawPoly([x, y - 5, x + 1.4, y - 1.4, x + 5, y, x + 1.4, y + 1.4, x, y + 5, x - 1.4, y + 1.4, x - 5, y, x - 1.4, y - 1.4], color);
-    }
-
-    private static void DrawSummary(Canvas c, ModSummary mod, double left, double top, double width)
-    {
-        var lines = Chrome.Wrap(Fonts.Main, 14, mod.Description, width - 2 * Pad, 2);
-
-        for (var i = 0; i < lines.Count; i++)
-            Chrome.Text(c, Fonts.Main, 14, left + Pad, top + 11 + i * 23.5, lines[i], Palette.Muted);
     }
 
     private static void DrawFooter(Canvas c, ModSummary mod, double left, double top, double width, double height)
