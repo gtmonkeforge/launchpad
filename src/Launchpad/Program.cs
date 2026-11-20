@@ -1,4 +1,5 @@
 using Launchpad.App;
+using Launchpad.Ui;
 
 namespace Launchpad;
 
@@ -16,7 +17,7 @@ public static class Program
         }
 
         using LaunchpadApp app = LaunchpadApp.CreateAsync().GetAwaiter().GetResult();
-        new AppHost(app).Run();
+        LaunchpadWindow.Run(app);
         return 0;
     }
 }

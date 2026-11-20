@@ -13,8 +13,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Photino.NET" Version="4.0.16" />
     <PackageReference Include="GoomeSharp" Version="0.5.3" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
   </ItemGroup>
@@ -28,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="wwwroot/**" LogicalName="wwwroot/$([System.String]::Copy('%(RecursiveDir)').Replace('\', '/'))%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Ui/Assets/logo.png" LogicalName="logo.png" />
     <EmbeddedResource Include="launchpad.ico" LogicalName="launchpad.ico" />
   </ItemGroup>
 
