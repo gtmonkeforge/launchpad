@@ -9,7 +9,6 @@ using Ui = GoomeSharp.Ui;
 public sealed class LaunchpadWindow
 {
     private const double EdgeSize = 4;
-    private const double ControlsWidth = 140;
 
     private readonly GoomeApp _window;
     private readonly Titlebar _titlebar;
@@ -96,7 +95,7 @@ public sealed class LaunchpadWindow
 
         Edge(ui, "edge-left", 0, 0, EdgeSize, height, Edges.Left, CursorShape.ResizeEW);
         Edge(ui, "edge-right", width - EdgeSize, Palette.TitlebarHeight, EdgeSize, height - Palette.TitlebarHeight, Edges.Right, CursorShape.ResizeEW);
-        Edge(ui, "edge-top", 0, 0, width - ControlsWidth, EdgeSize, Edges.Top, CursorShape.ResizeNS);
+        Edge(ui, "edge-top", 0, 0, width - 140, EdgeSize, Edges.Top, CursorShape.ResizeNS);
         Edge(ui, "edge-bottom", 0, height - EdgeSize, width, EdgeSize, Edges.Bottom, CursorShape.ResizeNS);
     }
 

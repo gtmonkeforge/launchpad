@@ -39,10 +39,7 @@ public sealed class Shell
     public bool SignedIn => User != null;
     public bool IsAdmin => User.Bool("is_admin");
 
-    public void Invalidate()
-    {
-        _loop.Wake();
-    }
+    public void Invalidate() => _loop.Wake();
 
     public void Quit() => _loop.Stop();
 
@@ -94,12 +91,6 @@ public sealed class Shell
             {
                 var result = await _bridge.DispatchAsync(method, args, CancellationToken.None);
                 done?.Invoke(result);
-            }
-            catch (UserFacingException ex)
-            {
-                _pendingToast = ex.Message;
-                worked = false;
-                failed?.Invoke(ex.Message);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

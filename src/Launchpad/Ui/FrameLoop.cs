@@ -6,8 +6,6 @@ using Ui = GoomeSharp.Ui;
 
 public sealed class FrameLoop(GoomeApp window, Action<Event> onEvent, Action<Ui> draw)
 {
-    private const int IdleWaitMs = 60;
-
     private volatile bool _running;
     private volatile int _frames = 2;
 
@@ -24,7 +22,7 @@ public sealed class FrameLoop(GoomeApp window, Action<Event> onEvent, Action<Ui>
 
         while (_running)
         {
-            var wait = _frames > 0 || ui.Animating ? pace.Pace(60) : IdleWaitMs;
+            var wait = _frames > 0 || ui.Animating ? pace.Pace(60) : 60;
 
             while (goome.Poll(out Event ev, wait))
             {

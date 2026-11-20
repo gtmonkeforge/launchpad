@@ -63,9 +63,15 @@ public sealed class Footer(Shell shell)
 
         for (var i = Links.Length - 1; i >= 0; i--)
         {
-            var linkWidth = Fonts.Main.Measure(12.5, Links[i].Name);
+            var (name, target) = Links[i];
+            var linkWidth = Fonts.Main.Measure(12.5, name);
             right -= linkWidth;
-            Link(ui, Links[i].Name, Links[i].Target, right, y + 35, linkWidth);
+            Item link = Chrome.Hit(ui, "footer-" + name, right - 2, y + 35 - 11, linkWidth + 4, 22);
+            Chrome.Text(ui.Canvas()!, Fonts.Main, 12.5, link.X + 2, link.Y + 11, name, link.Hovered ? Palette.Text : Palette.Muted);
+
+            if (link.Clicked)
+                shell.Router.Push(target);
+
             right -= 18;
         }
 
@@ -76,15 +82,6 @@ public sealed class Footer(Shell shell)
 
         if (_forge != null)
             Chip(c, x, second, "v" + _forge);
-    }
-
-    private void Link(Ui ui, string name, Route target, double x, double centerY, double width)
-    {
-        Item item = Chrome.Hit(ui, "footer-" + name, x - 2, centerY - 11, width + 4, 22);
-        Chrome.Text(ui.Canvas()!, Fonts.Main, 12.5, item.X + 2, item.Y + 11, name, item.Hovered ? Palette.Text : Palette.Muted);
-
-        if (item.Clicked)
-            shell.Router.Push(target);
     }
 
     private static void Chip(Canvas c, double x, double centerY, string text)
