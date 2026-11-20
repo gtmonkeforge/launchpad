@@ -21,6 +21,7 @@ public sealed class LaunchpadWindow
         Palette.SetAccent(app.Settings.Accent);
         LaunchpadTheme.Apply(window.Ui.Theme);
         window.Flags = AppFlags.NoPad;
+        window.RedrawEveryMs = 150;
         window.OnEvent += OnEvent;
         Shell.Router.Push(new Route(GameLocator.IsGameFolder(app.Settings.GamePath) ? Page.Browse : Page.Game));
     }
