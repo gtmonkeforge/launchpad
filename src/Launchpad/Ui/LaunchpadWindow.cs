@@ -18,6 +18,7 @@ public sealed class LaunchpadWindow
         _window = window;
         Shell = new Shell(app, window);
         _titlebar = new Titlebar(Shell);
+        Palette.SetAccent(app.Settings.Accent);
         LaunchpadTheme.Apply(window.Ui.Theme);
         window.Flags = AppFlags.NoPad;
         window.OnEvent += OnEvent;

@@ -23,7 +23,7 @@ public static class Widgets
         var hot = item.Hovered && enabled;
 
         if (kind == ButtonKind.Primary)
-            c.DrawRRect(item.X, item.Y, width, height, Palette.Radius, !enabled ? Palette.AccentLine : hot ? 0xFFE46A49 : Palette.Accent);
+            c.DrawRRect(item.X, item.Y, width, height, Palette.Radius, !enabled ? Palette.AccentLine : hot ? Palette.AccentHot : Palette.Accent);
         else
             Chrome.Box(c, item.X, item.Y, width, height, Palette.Radius, hot ? Palette.Hover : Palette.Surface2, kind == ButtonKind.Danger ? 0x66F08585 : Palette.LineStrong);
 
