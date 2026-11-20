@@ -41,34 +41,41 @@ public sealed partial class ModScreen
 
     private double DrawDownloadCard(Ui ui, double left, double width, double y)
     {
-        var notes = Notes();
+        var lockText = Locked ? PurchaseOptions().Any(option => option.Monthly) ? "Buy it once or pick a monthly tier." : "Buy once to install every future update." : null;
+        var notes = Notes().Where(note => note.Text != lockText).ToList();
         var wrapped = notes.Select(note => WrapLines(Fonts.Main, 13.5, note.Text, width - 40, 6)).ToList();
         var channels = _mod!["channels"] as JsonArray ?? [];
         var whatsNew = WrapLines(Fonts.Main, 13.5, Current.Str("notes") ?? "", width - 40, 8);
         var multi = Locked && _shell.SignedIn && PurchaseOptions().Count > 1;
-        var height = 74 + 46 + (multi ? 46 : 0) + wrapped.Sum(lines => lines.Count * 21 + 8) + (channels.Count > 1 ? 82 : 0) + (whatsNew.Count > 0 ? 34 + (_whatsNew ? whatsNew.Count * 21 + 8 : 0) : 0) + 4;
+        var buy = Locked ? 140.0 : 77.0;
+        var buttonHeight = Locked ? 36.0 : 42.0;
+        var height = buy + (multi ? 46 : 0) + buttonHeight + wrapped.Sum(lines => lines.Count * 21 + 8) + (channels.Count > 1 ? 82 : 0) + (whatsNew.Count > 0 ? 30 + (_whatsNew ? whatsNew.Count * 21 + 8 : 0) : 0) + 18;
 
         Item card = Area(ui, "mod-download", left, y, width, height);
         Canvas c = ui.Canvas()!;
         Chrome.Box(c, card.X, card.Y, width, height, Palette.RadiusLarge, Palette.Surface, Palette.Line);
 
         var latest = "Latest" + (_channel != "stable" ? " · " + _channel : "");
-        Chrome.Text(c, Fonts.Main, 12.5, card.X + 20, card.Y + 28, latest, Palette.Muted);
-        Chrome.BoldText(c, Fonts.Mono, 19, card.X + 20, card.Y + 56, Current == null ? "No release" : "v" + Current.Str("version"), Palette.Text);
+        Chrome.Text(c, Fonts.Main, 13, card.X + 19, card.Y + 23, latest, Palette.Muted);
+        Chrome.BoldText(c, Fonts.Mono, 19, card.X + 19, card.Y + 47, Current == null ? "No release" : "v" + Current.Str("version"), Palette.Text);
 
         if (Current != null)
         {
             var date = DateText(Current.Str("released_at"));
-            Chrome.Text(c, Fonts.Mono, 12.5, card.X + width - 20 - Fonts.Mono.Measure(12.5, date), card.Y + 28, date, Palette.Faint);
+            Chrome.Text(c, Fonts.Main, 13, card.X + width - 19 - Fonts.Main.Measure(13, date), card.Y + 23, date, Palette.Muted);
         }
 
-        var buy = 74.0;
+        if (lockText != null)
+        {
+            Chrome.BoldText(c, Fonts.Main, 15, card.X + 19, card.Y + 88, "Buy this mod", Palette.Text);
+            Chrome.Text(c, Fonts.Main, 13.5, card.X + 19, card.Y + 117, lockText, Palette.Muted);
+        }
 
         if (multi)
         {
             var options = PurchaseOptions();
             _choice = Math.Min(_choice, options.Count - 1);
-            ui.Pos(left + 20, y + 74);
+            ui.Pos(left + 20, y + buy);
             ui.Size(width - 40, 38);
             ui.Combo("##mod-buy-choice", ref _choice, options.Select(option => option.Label).ToList());
             buy += 46;
@@ -78,10 +85,10 @@ public sealed partial class ModScreen
         var removing = label == "Remove";
         var text = removing && _confirmRemove ? "Click again to remove" : label;
 
-        if (Button(ui, "mod-card-primary", text, left + 20, y + buy, width - 40, 36, removing ? ButtonStyle.Danger : ButtonStyle.Primary, enabled, removing ? Glyphs.Trash : null))
+        if (Button(ui, "mod-card-primary", text, left + 19, y + buy, width - 38, buttonHeight, removing ? ButtonStyle.Danger : ButtonStyle.Primary, enabled, removing ? Glyphs.Trash : PrimaryGlyph(label)))
             click?.Invoke();
 
-        var yy = DrawNotes(ui, notes, wrapped, left + 20, y + buy + 46);
+        var yy = DrawNotes(ui, notes, wrapped, left + 19, y + buy + buttonHeight + 7);
 
         if (_working)
         {
@@ -93,7 +100,7 @@ public sealed partial class ModScreen
             yy = DrawChannels(ui, channels, left + 20, yy, width - 40);
 
         if (whatsNew.Count > 0)
-            DrawWhatsNew(ui, whatsNew, left + 20, yy);
+            DrawWhatsNew(ui, whatsNew, left + 20, yy - 4);
 
         return y + height;
     }

@@ -14,19 +14,20 @@ public sealed partial class ModScreen
     private double DrawHero(Ui ui, double width, double y)
     {
         var badges = (_mod!["badges"] as JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToArray() ?? [];
-        var height = Math.Max(badges.Length > 0 ? 118.0 : 92.0, ActionsHeight());
+        var height = Math.Max(badges.Length > 0 ? 98.0 : 92.0, ActionsHeight());
         Item area = Area(ui, "mod-hero", SideMargin, y, width, height);
         Canvas c = ui.Canvas()!;
         DrawIcon(c, area.X, area.Y);
 
         var textLeft = area.X + IconSize + 20;
         var textWidth = width - IconSize - 20 - ActionsWidth - 20;
-        Chrome.BoldText(c, Fonts.Main, 28, textLeft, area.Y + 18, Chrome.Clip(Fonts.Main, 28, _mod.Str("name") ?? "", textWidth), Palette.Text);
-        DrawMeta(c, textLeft, area.Y + 56, textWidth);
-        DrawAuthorLink(ui, SideMargin + IconSize + 20, y + 42);
+        var titleY = badges.Length > 0 ? 11.0 : 28.0;
+        Chrome.BoldText(c, Fonts.Main, 28, textLeft, area.Y + titleY, Chrome.Clip(Fonts.Main, 28, _mod.Str("name") ?? "", textWidth), Palette.Text);
+        DrawMeta(c, textLeft, area.Y + titleY + 36, textWidth);
+        DrawAuthorLink(ui, SideMargin + IconSize + 20, y + titleY + 22);
 
         if (badges.Length > 0)
-            DrawBadgeRow(c, badges, textLeft, area.Y + 76);
+            DrawBadgeRow(c, badges, textLeft, area.Y + 68);
 
         DrawActions(ui, SideMargin + width - ActionsWidth, y);
         return y + height;
@@ -52,6 +53,7 @@ public sealed partial class ModScreen
     private void DrawIcon(Canvas c, double x, double y)
     {
         Bitmap? logo = _shell.Images.Get(_mod.Str("logo"));
+        Chrome.Box(c, x, y, IconSize, IconSize, 18, Palette.Surface2, Palette.Line);
 
         if (logo != null)
         {
@@ -59,7 +61,6 @@ public sealed partial class ModScreen
             return;
         }
 
-        Chrome.Box(c, x, y, IconSize, IconSize, 18, Palette.Surface2, Palette.Line);
         var letters = Format.Initials(_mod.Str("name"));
         Chrome.BoldText(c, Fonts.Main, 28, x + IconSize / 2 - Fonts.Main.Measure(28, letters) / 2, y + IconSize / 2, letters, Palette.Muted);
     }

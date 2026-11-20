@@ -13,6 +13,14 @@ public static class Glyphs
         c.DrawLine(x - 3, y + 5, x + 3, y + 5, 1.3, color);
     }
 
+    public static void Heart(Canvas c, double x, double y, uint color)
+    {
+        double[] points = [0, 5, -5.5, -0.5, -4.5, -3.5, -2, -4.5, 0, -2.5, 2, -4.5, 4.5, -3.5, 5.5, -0.5, 0, 5];
+
+        for (var i = 0; i < points.Length - 2; i += 2)
+            c.DrawLine(x + points[i], y + points[i + 1], x + points[i + 2], y + points[i + 3], 1.3, color);
+    }
+
     public static void Link(Canvas c, double x, double y, uint color)
     {
         c.DrawRRectLine(x - 6, y - 3, 7, 6, 3, 1.3, color);

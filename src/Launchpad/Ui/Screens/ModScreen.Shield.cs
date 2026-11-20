@@ -53,7 +53,7 @@ public sealed partial class ModScreen
         var risk = measured ? failed * 100.0 / total : 0;
         var eligible = _report.Bool("eligible");
         var verdict = complete ? (eligible ? "Passed" : "Review required") : StatusLabel(_report.Str("status"));
-        var height = _report == null && !_reportFailed ? 130.0 : _report == null ? 110.0 : measured ? 330.0 : 300.0;
+        var height = _report == null && !_reportFailed ? 130.0 : _report == null ? 110.0 : measured ? 301.0 : 271.0;
 
         Item card = Area(ui, "mod-shield", left, y, width, height);
         Canvas c = ui.Canvas()!;
@@ -70,17 +70,17 @@ public sealed partial class ModScreen
         DrawRing(c, card.X + width / 2, card.Y + 112, measured, risk, eligible);
 
         var pillWidth = Fonts.Main.Measure(12.5, verdict) + 18;
-        Widgets.Pill(c, card.X + width / 2 - pillWidth / 2, card.Y + 188, verdict, eligible && measured ? Palette.Good : measured ? Palette.Bad : Palette.Muted);
+        Widgets.Pill(c, card.X + width / 2 - pillWidth / 2, card.Y + 183, verdict, eligible && measured ? Palette.Good : measured ? Palette.Bad : Palette.Muted);
 
         if (measured)
         {
             var counts = $"{failed} failed · {total - failed} passed";
-            Chrome.Text(c, Fonts.Mono, 12.5, card.X + width / 2 - Fonts.Mono.Measure(12.5, counts) / 2, card.Y + 230, counts, Palette.Muted);
+            Chrome.Text(c, Fonts.Mono, 12.5, card.X + width / 2 - Fonts.Mono.Measure(12.5, counts) / 2, card.Y + 227, counts, Palette.Muted);
         }
 
-        var buttonTop = measured ? y + 262 : y + 232;
+        var buttonTop = measured ? y + 251 : y + 221;
 
-        if (Button(ui, "mod-shield-report", "Full report", left + 20, buttonTop, width - 40, 34, ButtonStyle.Plain))
+        if (Button(ui, "mod-shield-report", "Full report", left + 20, buttonTop, width - 40, 30, ButtonStyle.Plain))
             ShowTab("Security");
 
         return y + height;

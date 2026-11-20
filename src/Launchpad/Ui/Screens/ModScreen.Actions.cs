@@ -9,7 +9,6 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class ModScreen
 {
-    private const double ActionWidth = 190;
     private const double ActionsWidth = 260;
 
     private string[] ReleaseLoaders()
@@ -88,16 +87,15 @@ public sealed partial class ModScreen
 
     private List<SideButton> SideButtons()
     {
-        var buttons = new List<SideButton>
-        {
-            new("mod-share", "Share", ButtonStyle.Plain, true, CopyLink, Glyphs.Link),
-        };
+        var buttons = new List<SideButton>();
+
+        if (CanDonate)
+            buttons.Add(new("mod-donate", "Donate", ButtonStyle.Plain, true, OpenDonate, Glyphs.Heart));
+
+        buttons.Add(new("mod-share", "Share", ButtonStyle.Plain, true, CopyLink, Glyphs.Link));
 
         if (_mod.Str("source_url") is { } source)
             buttons.Add(new("mod-source", "Source", ButtonStyle.Plain, true, () => _shell.Call("shell.open", new JsonObject { ["url"] = source }), Glyphs.Code));
-
-        if (CanDonate)
-            buttons.Add(new("mod-donate", "Donate", ButtonStyle.Plain, true, OpenDonate, null));
 
         if (_owner)
             buttons.Add(new("mod-manage", "Manage", ButtonStyle.Plain, true, OpenManage, Glyphs.Gear));
@@ -116,28 +114,46 @@ public sealed partial class ModScreen
 
     private static List<(SideButton Button, double Width, int Row, double Left)> SideLayout(List<SideButton> buttons)
     {
-        var placed = new List<(SideButton, double, int, double)>();
-        var used = 0.0;
-        var row = 0;
+        var rows = new List<List<(SideButton, double)>> { new() };
 
         foreach (var button in buttons)
         {
-            var width = Fonts.Main.Measure(13.5, button.Text) + (button.Glyph == null ? 30 : 46);
+            var width = Fonts.Main.Measure(13.5, button.Text) + 46;
+            var used = rows[^1].Sum(item => item.Item2 + 8);
 
             if (used > 0 && used + width > ActionsWidth)
-            {
-                row++;
-                used = 0;
-            }
+                rows.Add(new());
 
-            placed.Add((button, width, row, ActionsWidth - used - width));
-            used += width + 8;
+            rows[^1].Add((button, width));
+        }
+
+        var placed = new List<(SideButton, double, int, double)>();
+
+        for (var row = 0; row < rows.Count; row++)
+        {
+            var left = ActionsWidth - rows[row].Sum(item => item.Item2 + 8) + 8;
+
+            foreach (var (button, width) in rows[row])
+            {
+                placed.Add((button, width, row, left));
+                left += width + 8;
+            }
         }
 
         return placed;
     }
 
-    private double ActionsHeight() => 48 + (SideLayout(SideButtons()).Max(item => item.Row) + 1) * 40 - 8;
+    private double ActionsHeight() => 80 + SideLayout(SideButtons()).Max(item => item.Row) * 38;
+
+    private static Action<Canvas, double, double, uint>? PrimaryGlyph(string label) => label switch
+    {
+        "Choose your game folder" => Glyphs.Game,
+        "Sign in to buy" => Glyphs.User,
+        "Remove" => Glyphs.Trash,
+        "Install" or "Install with injector" => Icons.Download,
+        _ when label.StartsWith("Update", StringComparison.Ordinal) => Icons.Download,
+        _ => null,
+    };
 
     private void DrawActions(Ui ui, double areaLeft, double y)
     {
@@ -145,13 +161,15 @@ public sealed partial class ModScreen
         var removing = label == "Remove";
         var text = removing && _confirmRemove ? "Click again to remove" : label;
         var style = removing ? ButtonStyle.Danger : ButtonStyle.Primary;
+        var glyph = PrimaryGlyph(label);
+        var width = Fonts.Main.Measure(15, text) + (glyph == null ? 40 : 66);
 
-        if (Button(ui, "mod-primary", text, areaLeft + ActionsWidth - ActionWidth, y, ActionWidth, 40, style, enabled, removing ? Glyphs.Trash : null))
+        if (Button(ui, "mod-primary", text, areaLeft + ActionsWidth - width, y, width, 42, style, enabled, glyph))
             click?.Invoke();
 
-        foreach (var (button, width, row, left) in SideLayout(SideButtons()))
+        foreach (var (button, buttonWidth, row, left) in SideLayout(SideButtons()))
         {
-            if (Button(ui, button.Id, button.Text, areaLeft + left, y + 48 + row * 40, width, 32, button.Style, button.Enabled, button.Glyph))
+            if (Button(ui, button.Id, button.Text, areaLeft + left, y + 50 + row * 38, buttonWidth, 30, button.Style, button.Enabled, button.Glyph))
                 button.Click();
         }
     }

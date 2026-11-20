@@ -112,7 +112,7 @@ public sealed partial class ModScreen : IScreen
 
         y = DrawBanner(ui, width, y);
         y = DrawHero(ui, width, y) + 16;
-        y = DrawStats(ui, width, y) + 26;
+        y = DrawStats(ui, width, y) + 24;
 
         var sideWidth = width >= 940 ? 330.0 : 290.0;
         var mainWidth = width - sideWidth - Gap;
@@ -139,7 +139,7 @@ public sealed partial class ModScreen : IScreen
         Canvas c = ui.Canvas()!;
         Chrome.Box(c, area.X, area.Y, width, 220, Palette.RadiusLarge, Palette.Surface, Palette.Line);
         c.DrawBitmap(_bannerCrop!, area.X + 1, area.Y + 1, width - 2, 218, Palette.RadiusLarge - 1);
-        return y + 232;
+        return y + 240;
     }
 
     private Bitmap? _bannerCrop;
@@ -200,8 +200,8 @@ public sealed partial class ModScreen : IScreen
         }
 
         Canvas c = ui.Canvas()!;
-        c.DrawBitmap(_backdrop!, _ox, _oy, width, 460, 0, 0x38FFFFFF);
-        c.DrawRRectGrad(_ox, _oy + 220, width, 240, 0, 0x00111214, Palette.Bg);
+        c.DrawBitmap(_backdrop!, _ox, _oy, width, 480, 0, 0x38FFFFFF);
+        c.DrawRRectGrad(_ox, _oy, width, 480, 0, 0x00111214, Palette.Bg);
     }
 
     private Bitmap? _backdrop;

@@ -6,8 +6,8 @@ public static class Backdrop
 {
     public static Bitmap Blurred(Bitmap source)
     {
-        const int width = 40;
-        const int height = 14;
+        const int width = 10;
+        const int height = 4;
         var pixels = new uint[width * height];
         var cropWidth = Math.Min(source.Width, source.Height * width / height);
         var cropHeight = Math.Min(source.Height, source.Width * height / width);
