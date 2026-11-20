@@ -8,7 +8,7 @@ public static partial class Format
     public static string Initials(string? name)
     {
         var words = (name ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2);
-        var letters = string.Concat(words.Select(word => char.ToUpperInvariant(word[0])));
+        var letters = string.Concat(words.Select(word => word.EnumerateRunes().First().ToString().ToUpperInvariant()));
         return letters.Length == 0 ? "?" : letters;
     }
 
