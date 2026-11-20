@@ -12,17 +12,17 @@ public sealed class LaunchpadWindow
 
     private readonly GoomeApp _window;
     private readonly Titlebar _titlebar;
+    private readonly FrameLoop _loop;
 
     public LaunchpadWindow(LaunchpadApp app, GoomeApp window)
     {
         _window = window;
-        Shell = new Shell(app, window);
+        _loop = new FrameLoop(window, OnEvent, Draw);
+        Shell = new Shell(app, window, _loop);
         _titlebar = new Titlebar(Shell);
         Palette.SetAccent(app.Settings.Accent);
         LaunchpadTheme.Apply(window.Ui.Theme);
         window.Flags = AppFlags.NoPad;
-        window.RedrawEveryMs = 150;
-        window.OnEvent += OnEvent;
         Shell.Router.Push(new Route(GameLocator.IsGameFolder(app.Settings.GamePath) ? Page.Browse : Page.Game));
     }
 
@@ -43,7 +43,7 @@ public sealed class LaunchpadWindow
         using var window = new GoomeApp(options);
         var launchpad = new LaunchpadWindow(app, window);
         launchpad.RestoreSession();
-        window.Run(launchpad.Draw);
+        launchpad._loop.Run();
     }
 
     public void RestoreSession()

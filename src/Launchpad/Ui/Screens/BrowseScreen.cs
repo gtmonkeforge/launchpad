@@ -68,7 +68,7 @@ public sealed partial class BrowseScreen(Shell shell) : IScreen
         }
         else if (_typedAt != 0)
         {
-            shell.Window.Invalidate();
+            shell.Invalidate();
         }
     }
 

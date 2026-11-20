@@ -98,7 +98,7 @@ public sealed class Titlebar(Shell shell)
     private double DrawRight(Ui ui, double width, double leftEnd)
     {
         var x = width - 46;
-        WindowButton(ui, "close", x, Icons.Close, true, shell.Window.Quit);
+        WindowButton(ui, "close", x, Icons.Close, true, shell.Quit);
         x -= 46;
         var maximized = shell.Window.Goome.State == WindowState.Maximized;
         WindowButton(ui, "maximize", x, maximized ? Icons.Restore : Icons.Maximize, false, ToggleMaximize);

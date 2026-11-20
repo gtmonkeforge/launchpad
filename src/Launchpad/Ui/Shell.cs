@@ -9,11 +9,13 @@ namespace Launchpad.Ui;
 public sealed class Shell
 {
     private readonly Bridge _bridge;
+    private readonly FrameLoop _loop;
 
-    public Shell(LaunchpadApp app, GoomeApp window)
+    public Shell(LaunchpadApp app, GoomeApp window, FrameLoop loop)
     {
         App = app;
         Window = window;
+        _loop = loop;
         _bridge = new Bridge(app, _ => Task.FromResult<string?>(null));
         Images = new ImageCache(app.Forge, Invalidate);
         Notifications = new Notifications(this);
@@ -39,9 +41,10 @@ public sealed class Shell
 
     public void Invalidate()
     {
-        Window.Invalidate();
-        Window.Goome.Push(new Event(EventType.None));
+        _loop.Wake();
     }
+
+    public void Quit() => _loop.Stop();
 
     public void Toast(string text)
     {
