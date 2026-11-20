@@ -13,14 +13,14 @@ public enum ButtonStyle
 
 public sealed partial class ModScreen
 {
-    private static Item Area(Ui ui, string id, double x, double y, double w, double h)
+    internal static Item Area(Ui ui, string id, double x, double y, double w, double h)
     {
         ui.Pos(x, y);
         ui.Custom(id, w, h, ItemFlags.NoHit, out Item item);
         return item;
     }
 
-    private bool Button(Ui ui, string id, string text, double x, double y, double w, double h, ButtonStyle style, bool enabled = true, Action<Canvas, double, double, uint>? glyph = null)
+    internal static bool Button(Ui ui, string id, string text, double x, double y, double w, double h, ButtonStyle style, bool enabled = true, Action<Canvas, double, double, uint>? glyph = null)
     {
         Item item = Chrome.Hit(ui, id, x, y, w, h);
         Canvas c = ui.Canvas()!;
@@ -47,7 +47,7 @@ public sealed partial class ModScreen
         return width;
     }
 
-    private static List<string> WrapLines(Font font, double size, string text, double width, int maxLines)
+    internal static List<string> WrapLines(Font font, double size, string text, double width, int maxLines)
     {
         var lines = new List<string>();
 
@@ -62,7 +62,7 @@ public sealed partial class ModScreen
         return lines.Take(maxLines).ToList();
     }
 
-    private static string Size(long bytes)
+    internal static string Size(long bytes)
     {
         if (bytes >= 1024 * 1024)
             return (bytes / 1048576.0).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " MB";
@@ -70,7 +70,7 @@ public sealed partial class ModScreen
         return Math.Max(1, (long)Math.Round(bytes / 1024.0, MidpointRounding.AwayFromZero)) + " KB";
     }
 
-    private static string DateText(string? text) => ParseDate(text).ToLocalTime().ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture);
+    internal static string DateText(string? text) => ParseDate(text).ToLocalTime().ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture);
 
     private static readonly Dictionary<string, string> LoaderLabels = new()
     {

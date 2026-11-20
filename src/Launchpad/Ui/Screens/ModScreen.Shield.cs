@@ -81,7 +81,7 @@ public sealed partial class ModScreen
         var buttonTop = measured ? y + 251 : y + 221;
 
         if (Button(ui, "mod-shield-report", "Full report", left + 20, buttonTop, width - 40, 30, ButtonStyle.Plain))
-            ShowTab("Security");
+            OpenShield();
 
         return y + height;
     }
@@ -98,7 +98,7 @@ public sealed partial class ModScreen
         Chrome.Text(ui.Canvas()!, Fonts.Main, 14, card.X + 20, card.Y + 64, "Analysis unavailable.", Palette.Muted);
     }
 
-    private static void DrawRing(Canvas c, double x, double y, bool measured, double risk, bool eligible)
+    internal static void DrawRing(Canvas c, double x, double y, bool measured, double risk, bool eligible)
     {
         const double radius = 51;
         c.DrawRing(x, y, radius, 7, Palette.Line);
@@ -116,7 +116,7 @@ public sealed partial class ModScreen
         Chrome.Text(c, Fonts.Main, 11, x - Fonts.Main.Measure(11, "risk") / 2, y + 16, "risk", Palette.Faint);
     }
 
-    private static string StatusLabel(string? status) => status switch
+    internal static string StatusLabel(string? status) => status switch
     {
         "scanning" => "Scan in progress",
         "not_scanned" => "Not scanned yet",

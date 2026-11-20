@@ -207,6 +207,6 @@ public sealed partial class ModScreen : IScreen
     private Bitmap? _backdrop;
     private Bitmap? _backdropSource;
 
-    private static DateTimeOffset ParseDate(string? text) =>
+    internal static DateTimeOffset ParseDate(string? text) =>
         DateTimeOffset.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out var when) ? when : DateTimeOffset.UtcNow;
 }

@@ -79,6 +79,7 @@ public sealed class Router(Shell shell)
         Page.Support => new SupportScreen(shell, route.Arg),
         Page.Profile => new ProfileScreen(shell, route.Arg),
         Page.Manage => new ManageScreen(shell, route.Arg),
+        Page.Shield => new ShieldScreen(shell, route.Arg),
         _ => new PlaceholderScreen(shell, "Launchpad", "/"),
     };
 }

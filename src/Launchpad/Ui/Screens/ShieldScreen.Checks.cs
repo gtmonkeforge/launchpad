@@ -1,12 +1,13 @@
 using System.Text.Json.Nodes;
 using GoomeSharp;
 using Launchpad.Infrastructure;
+using static Launchpad.Ui.Screens.ModScreen;
 
 namespace Launchpad.Ui.Screens;
 
 using Ui = GoomeSharp.Ui;
 
-public sealed partial class ModScreen
+public sealed partial class ShieldScreen
 {
     private double CheckHeight(string key, JsonNode check, double width)
     {
@@ -31,7 +32,7 @@ public sealed partial class ModScreen
             var heights = section.Checks.Select(item => CheckHeight(item.Key, item.Check, width - 44)).ToList();
             var body = section.Checks.Count == 0 ? 40 : heights.Sum();
             var height = 22 + 34 + body + 14;
-            Item card = Area(ui, "mod-checks-" + section.Name, left, y, width, height);
+            Item card = Area(ui, "shield-checks-" + section.Name, left, y, width, height);
             Canvas c = ui.Canvas()!;
             Chrome.Box(c, card.X, card.Y, width, height, Palette.RadiusLarge, Palette.Surface, Palette.Line);
             Chrome.BoldText(c, Fonts.Mono, 15, card.X + 22, card.Y + 34, section.Name, Palette.Text);
@@ -49,7 +50,7 @@ public sealed partial class ModScreen
             y += height + 14;
         }
 
-        if (hidden > 0 && Button(ui, "mod-checks-more", $"Show more ({hidden} left)", left, y, 200, 36, ButtonStyle.Plain))
+        if (hidden > 0 && Button(ui, "shield-checks-more", $"Show more ({hidden} left)", left, y, 200, 36, ButtonStyle.Plain))
             _checksShown += CheckBatch;
 
         return hidden > 0 ? y + 36 : y - 14;
@@ -57,7 +58,7 @@ public sealed partial class ModScreen
 
     private double DrawNoAssemblies(Ui ui, double left, double width, double y)
     {
-        Item box = Area(ui, "mod-no-assemblies", left, y, width, 110);
+        Item box = Area(ui, "shield-no-assemblies", left, y, width, 110);
         Canvas c = ui.Canvas()!;
         Chrome.Box(c, box.X, box.Y, width, 110, Palette.RadiusLarge, Palette.Surface, Palette.Line);
         Chrome.BoldText(c, Fonts.Main, 17, box.X + 22, box.Y + 40, "No assemblies scanned", Palette.Text);
@@ -67,7 +68,7 @@ public sealed partial class ModScreen
 
     private void DrawCheck(Ui ui, string key, JsonNode check, double x, double y, double width)
     {
-        Item row = Chrome.Hit(ui, "mod-check-" + key, x, y, width, CheckRow);
+        Item row = Chrome.Hit(ui, "shield-check-" + key, x, y, width, CheckRow);
         Canvas c = ui.Canvas()!;
         var failed = Failed(check);
         var open = _openChecks.Contains(key);
@@ -124,7 +125,7 @@ public sealed partial class ModScreen
             var report = Artifacts[a]?["report"];
             var diagnostics = (report?["diagnostics"] as JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToList() ?? [];
             var height = 22 + 40 + 4 * 32 + diagnostics.Count * 30 + 14;
-            Item card = Area(ui, "mod-assembly-" + a, left, y, width, height);
+            Item card = Area(ui, "shield-assembly-" + a, left, y, width, height);
             Canvas c = ui.Canvas()!;
             Chrome.Box(c, card.X, card.Y, width, height, Palette.RadiusLarge, Palette.Surface, Palette.Line);
             Chrome.BoldText(c, Fonts.Mono, 15, card.X + 22, card.Y + 34, Artifacts[a].Str("name") ?? "", Palette.Text);
