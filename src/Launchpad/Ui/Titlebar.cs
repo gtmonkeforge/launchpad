@@ -184,7 +184,7 @@ public sealed class Titlebar(Shell shell)
         Chrome.Text(c, Fonts.Main, 14, item.X + 39 - Fonts.Main.Measure(14, "Sign in") / 2, item.Y + 17, "Sign in", Palette.Text);
 
         if (item.Clicked)
-            shell.SignIn();
+            shell.Router.Push(new Route(Page.SignIn));
     }
 
     private void AccountMenu(Ui ui, string name)

@@ -46,7 +46,7 @@ public sealed class Router(Shell shell)
         Page.Admin => new PlaceholderScreen(shell, "Admin", "/admin"),
         Page.Game => new GameSettingsScreen(shell),
         Page.Settings => new PlaceholderScreen(shell, "Settings", "/settings"),
-        Page.SignIn => new PlaceholderScreen(shell, "Sign in", "/login"),
+        Page.SignIn => new SignInScreen(shell),
         _ => new PlaceholderScreen(shell, "Launchpad", "/"),
     };
 }

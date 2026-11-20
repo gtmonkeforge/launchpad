@@ -44,7 +44,22 @@ public sealed class Shell
 
     public void OpenForge(string path) => Call("shell.openForge", new JsonObject { ["path"] = path });
 
-    public void SignIn() => Call("auth.signIn", []);
+    public bool SigningIn { get; private set; }
+
+    public void SignIn()
+    {
+        if (SigningIn)
+            return;
+
+        SigningIn = true;
+        CallAsync("auth.signIn", []).ContinueWith(_ =>
+        {
+            SigningIn = false;
+            Invalidate();
+        });
+    }
+
+    public void CancelSignIn() => Call("auth.cancel", []);
 
     public void SignOut() => Call("auth.signOut", []);
 
