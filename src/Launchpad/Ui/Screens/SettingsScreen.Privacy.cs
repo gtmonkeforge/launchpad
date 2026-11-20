@@ -17,20 +17,18 @@ public sealed partial class SettingsScreen
         ("statement_descriptor", "Statement descriptor"),
     ];
 
-    private const string PrivacyIntro = "Buyers see these on receipts and bank statements. MonkeForge fills them in with its own contact details so your personal ones stay private.";
-
     private double DrawPrivacy(Ui ui, double left, double y, double width, JsonNode privacy)
     {
-        var wrong = (privacy["issues"] as JsonArray)?.Select(issue => issue?.GetValue<string>()).ToHashSet() ?? [];
+        var wrong = (privacy["issues"] as JsonArray)?.Select(i => i?.GetValue<string>()).ToHashSet() ?? [];
         var grace = privacy.Str("grace_ends_at");
         var notice = wrong.Count == 0 ? "" : grace != null
             ? "Some of your public Stripe details show buyers your personal information. Change the fields below in Stripe to match before " + Format.Date(grace) + ", or paid sales and membership billing will pause until you do."
             : "Some of your public Stripe details would show buyers your personal information, so paid sales and membership billing are paused. Change the fields below in Stripe to match, then refresh this page.";
         var noticeHeight = notice.Length == 0 ? 0 : Card.HintHeight(notice, width) + 8;
-        var introHeight = Card.HintHeight(PrivacyIntro, width);
-        var height = 56 + introHeight + noticeHeight + PrivacyFields.Length * 40 + 60;
+        var intro = "Buyers see these on receipts and bank statements. MonkeForge fills them in with its own contact details so your personal ones stay private.";
+        var height = 56 + Card.HintHeight(intro, width) + noticeHeight + PrivacyFields.Length * 40 + 60;
         Card card = Card.Open(ui, "payouts-privacy", left, y, width, height, "Your public Stripe details");
-        var top = 44 + card.Hint(0, 44, width, PrivacyIntro) + 4;
+        var top = 44 + card.Hint(0, 44, width, intro) + 4;
 
         if (notice.Length > 0)
             top += card.Hint(0, top, width, notice, Palette.Warn) + 8;

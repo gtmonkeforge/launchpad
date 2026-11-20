@@ -8,8 +8,6 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class SettingsScreen
 {
-    private const string KeysHint = "Keys can publish releases to your mods from scripts or CI. A key is shown once and can't be retrieved later.";
-
     private string _keyName = "";
     private string? _newToken;
     private bool _creatingKey;
@@ -20,10 +18,10 @@ public sealed partial class SettingsScreen
             return bottom;
 
         var y = TopMargin;
-        var hintHeight = Card.HintHeight(KeysHint, width);
-        var createHeight = 110 + hintHeight + (_newToken == null ? 0 : 60);
+        var hint = "Keys can publish releases to your mods from scripts or CI. A key is shown once and can't be retrieved later.";
+        var createHeight = 110 + Card.HintHeight(hint, width) + (_newToken == null ? 0 : 60);
         Card create = Card.Open(ui, "keys-create", left, y, width, createHeight, "Create an access key");
-        var rowTop = 44 + create.Hint(0, 44, width, KeysHint) + 8;
+        var rowTop = 44 + create.Hint(0, 44, width, hint) + 8;
 
         if (_newToken != null)
         {
@@ -93,9 +91,8 @@ public sealed partial class SettingsScreen
         {
             var key = items[i];
             var top = 52 + i * 56;
-            var used = Format.Ago(key.Str("last_used_at"), "") is { Length: > 0 } ago ? "last used " + ago : "never used";
             card.Bold(Card.Padding, top + 14, 14.5, Chrome.Clip(Fonts.Main, 14.5, (key.Str("name") ?? "") + "  " + key.Str("prefix") + "...", width - Card.Padding * 2 - 110), Palette.Text);
-            card.Text(Card.Padding, top + 36, 13, used, Palette.Muted);
+            card.Text(Card.Padding, top + 36, 13, LastUsed(key), Palette.Muted);
 
             if (key.Str("revoked_at") != null)
                 card.Text(width - Card.Padding - 56, top + 24, 13.5, "Revoked", Palette.Bad);
@@ -110,10 +107,9 @@ public sealed partial class SettingsScreen
         return y + height;
     }
 
-    private List<JsonNode> Items()
-    {
-        return (_data?["items"] as JsonArray)?.Where(item => item != null).Select(item => item!).ToList() ?? [];
-    }
+    private List<JsonNode> Items() => ListOf(_data, "items");
+
+    private static string LastUsed(JsonNode item) => Format.Ago(item.Str("last_used_at"), "") is { Length: > 0 } ago ? "last used " + ago : "never used";
 
     private double DrawDevices(Ui ui, double left, double width)
     {
@@ -131,9 +127,9 @@ public sealed partial class SettingsScreen
 
         for (var i = 0; i < items.Count; i++)
         {
-            var used = Format.Ago(items[i].Str("last_used_at"), "") is { Length: > 0 } ago ? "Last used " + ago : "Never used";
+            var used = LastUsed(items[i]);
             card.Bold(Card.Padding, top + i * 56 + 14, 14.5, Chrome.Clip(Fonts.Main, 14.5, items[i].Str("name") ?? "", width - Card.Padding * 2 - 110), Palette.Text);
-            card.Text(Card.Padding, top + i * 56 + 36, 13, used, Palette.Muted);
+            card.Text(Card.Padding, top + i * 56 + 36, 13, char.ToUpperInvariant(used[0]) + used[1..], Palette.Muted);
         }
 
         for (var i = 0; i < items.Count; i++)

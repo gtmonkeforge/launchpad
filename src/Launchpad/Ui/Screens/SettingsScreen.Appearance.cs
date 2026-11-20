@@ -10,6 +10,8 @@ public sealed partial class SettingsScreen
 {
     private static readonly string[] Swatches = ["#dc5c3b", "#f59e0b", "#22c55e", "#14b8a6", "#60cdff", "#6366f1", "#a855f7", "#ec4899", "#e5e7eb"];
 
+    private static readonly Regex HexColor = new("^#[0-9a-fA-F]{6}$");
+
     private string _savedAccent = Palette.DefaultAccent;
     private string _accent = Palette.DefaultAccent;
     private string _hex = Palette.DefaultAccent;
@@ -17,7 +19,7 @@ public sealed partial class SettingsScreen
     private void InitAppearance()
     {
         var saved = shell.User.Str("accent_color");
-        _savedAccent = Regex.IsMatch(saved ?? "", "^#[0-9a-fA-F]{6}$") ? saved!.ToLowerInvariant() : shell.App.Settings.Accent;
+        _savedAccent = HexColor.IsMatch(saved ?? "") ? saved!.ToLowerInvariant() : shell.App.Settings.Accent;
         _accent = _savedAccent;
         _hex = _savedAccent;
     }
@@ -75,7 +77,7 @@ public sealed partial class SettingsScreen
         ui.Pos(x + 48, y);
         ui.Size(130, 40);
 
-        if (ui.Input("##accent-hex", ref _hex, 8) && Regex.IsMatch(_hex, "^#[0-9a-fA-F]{6}$"))
+        if (ui.Input("##accent-hex", ref _hex, 8) && HexColor.IsMatch(_hex))
         {
             _accent = _hex.ToLowerInvariant();
             Palette.SetAccent(_accent);
@@ -96,9 +98,8 @@ public sealed partial class SettingsScreen
     private void DrawSample(Ui ui, double x, double y)
     {
         Widgets.Button(ui, "accent-sample", x, y, "Primary", ButtonKind.Primary, out var width, true, 36);
-        Canvas c = ui.Canvas()!;
         Item area = Chrome.Hit(ui, "accent-sample-chips", x + width + 12, y, 160, 36);
-        c = ui.Canvas()!;
+        Canvas c = ui.Canvas()!;
         var pill = Widgets.Pill(c, area.X, area.Y + 6, "Selected", Palette.Accent);
         Chrome.Text(c, Fonts.Main, 14, area.X + pill + 12, area.Y + 18, "A link", Palette.Muted);
     }

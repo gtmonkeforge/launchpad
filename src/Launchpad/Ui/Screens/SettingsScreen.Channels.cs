@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using GoomeSharp;
 using Launchpad.Infrastructure;
 
 namespace Launchpad.Ui.Screens;
@@ -7,8 +8,6 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class SettingsScreen
 {
-    private const string ChannelHint = "Mod authors can share 25-character codes for private betas. Paste the whole code into the first box.";
-
     private readonly string[] _codeParts = ["", "", "", "", ""];
     private string _unlockStatus = "";
     private string? _unlockUrl;
@@ -16,9 +15,10 @@ public sealed partial class SettingsScreen
 
     private double DrawChannels(Ui ui, double left, double width)
     {
-        var height = 170 + Card.HintHeight(ChannelHint, width) + (_unlockStatus.Length > 0 ? 34 : 0);
+        var hint = "Mod authors can share 25-character codes for private betas. Paste the whole code into the first box.";
+        var height = 170 + Card.HintHeight(hint, width) + (_unlockStatus.Length > 0 ? 34 : 0);
         Card card = Card.Open(ui, "channels-panel", left, TopMargin, width, height, "Unlock a release channel");
-        var top = 44 + card.Hint(0, 44, width, ChannelHint) + 10;
+        var top = 44 + card.Hint(0, 44, width, hint) + 10;
         DrawCodeBoxes(ui, left + Card.Padding, TopMargin + top, Math.Min(width - Card.Padding * 2, 520));
         var code = string.Concat(_codeParts);
 
@@ -44,13 +44,13 @@ public sealed partial class SettingsScreen
             ui.Pos(x + i * (box + 22), y);
             ui.Size(box, 38);
 
-            if (ui.InputEx("##channel-code-" + i, ref text, GoomeSharp.InputFlags.None, "XXXXX", 40) > 0)
+            if (ui.InputEx("##channel-code-" + i, ref text, InputFlags.None, "XXXXX", 40) > 0)
                 TakeCodePart(i, text);
 
             if (i == 4)
                 continue;
 
-            GoomeSharp.Item dash = Chrome.Hit(ui, "channel-dash-" + i, x + i * (box + 22) + box, y, 22, 38);
+            Item dash = Chrome.Hit(ui, "channel-dash-" + i, x + i * (box + 22) + box, y, 22, 38);
             Chrome.Text(ui.Canvas()!, Fonts.Main, 16, dash.X + 6, dash.Y + 19, "–", Palette.Muted);
         }
     }

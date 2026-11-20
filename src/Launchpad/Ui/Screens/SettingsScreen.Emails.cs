@@ -6,10 +6,6 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class SettingsScreen
 {
-    private const string ReleasesHint = "When anyone uploads a release to a mod you own, or to one owned by a publishing group you're in. Useful for spotting uploads you didn't expect.";
-    private const string AnnouncementsHint = "Occasional news from the staff team.";
-    private const string AlwaysSentHint = "Account emails, like confirmation links, password resets and security alerts, are always sent.";
-
     private double DrawEmails(Ui ui, double left, double width)
     {
         if (Waiting(ui, left, width, out var bottom))
@@ -19,20 +15,23 @@ public sealed partial class SettingsScreen
         var intro = email is { Length: > 0 }
             ? "Emails go to " + email + ". You can change it on monkeforge.org."
             : "Your account has no confirmed email address, so you won't get any of these. Add one on monkeforge.org.";
-        var indented = width - 36;
-        var firstTop = 44 + Card.HintHeight(intro, width) + 8;
-        var secondTop = firstTop + 28 + Card.HintHeight(ReleasesHint, indented) + 12;
-        var footerTop = secondTop + 28 + Card.HintHeight(AnnouncementsHint, indented) + 12;
-        var height = footerTop + Card.HintHeight(AlwaysSentHint, width) + 20;
+        var releases = "When anyone uploads a release to a mod you own, or to one owned by a publishing group you're in. Useful for spotting uploads you didn't expect.";
+        var news = "Occasional news from the staff team.";
+        var always = "Account emails, like confirmation links, password resets and security alerts, are always sent.";
+        var narrow = width - 36;
+        var first = 44 + Card.HintHeight(intro, width) + 8;
+        var second = first + 28 + Card.HintHeight(releases, narrow) + 12;
+        var last = second + 28 + Card.HintHeight(news, narrow) + 12;
+        var height = last + Card.HintHeight(always, width) + 20;
 
         Card card = Card.Open(ui, "emails-panel", left, TopMargin, width, height, "What we email you");
         card.Hint(0, 44, width, intro);
-        card.Hint(18, firstTop + 28, indented, ReleasesHint);
-        card.Hint(18, secondTop + 28, indented, AnnouncementsHint);
-        card.Hint(0, footerTop, width, AlwaysSentHint, Palette.Faint);
+        card.Hint(18, first + 28, narrow, releases);
+        card.Hint(18, second + 28, narrow, news);
+        card.Hint(0, last, width, always, Palette.Faint);
 
-        EmailToggle(ui, left, TopMargin + firstTop, "releases", "New releases on mods you manage");
-        EmailToggle(ui, left, TopMargin + secondTop, "announcements", "MonkeForge announcements");
+        EmailToggle(ui, left, TopMargin + first, "releases", "New releases on mods you manage");
+        EmailToggle(ui, left, TopMargin + second, "announcements", "MonkeForge announcements");
         return TopMargin + height;
     }
 

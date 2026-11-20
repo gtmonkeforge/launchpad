@@ -8,8 +8,6 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class SettingsScreen
 {
-    private static readonly Dictionary<string, string> StatusNames = new() { ["refunded"] = "Refunded", ["disputed"] = "Disputed", ["failed"] = "Failed" };
-
     private string? _payoutFor;
     private List<JsonNode> _ownedGroups = [];
 
@@ -146,7 +144,7 @@ public sealed partial class SettingsScreen
 
     private double DrawRecent(Ui ui, double left, double y, double width)
     {
-        var items = (_data?["recent"] as JsonArray)?.Where(item => item != null).Select(item => item!).ToList() ?? [];
+        var items = ListOf(_data, "recent");
         var height = 56 + Math.Max(1, items.Count) * 56;
         Card card = Card.Open(ui, "payouts-recent", left, y, width, height, "Recent activity");
 
@@ -166,7 +164,7 @@ public sealed partial class SettingsScreen
             card.Text(width - Card.Padding - Fonts.Mono.Measure(14, money) - (items[i].Str("status") is "paid" or null ? 0 : 110), top + 24, 14, money, Palette.Text, true);
 
             if (items[i].Str("status") is { } status && status != "paid")
-                card.PillRight(width - Card.Padding, top + 13, StatusNames.GetValueOrDefault(status, status), Palette.Bad);
+                card.PillRight(width - Card.Padding, top + 13, status switch { "refunded" => "Refunded", "disputed" => "Disputed", "failed" => "Failed", _ => status }, Palette.Bad);
         }
 
         return y + height;
