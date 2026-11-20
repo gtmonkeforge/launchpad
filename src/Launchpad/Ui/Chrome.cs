@@ -33,8 +33,23 @@ public static class Chrome
         if (font.Measure(size, text) <= maxWidth)
             return text;
 
-        while (text.Length > 1 && font.Measure(size, text + "...") > maxWidth)
-            text = text[..^1];
+        var low = 1;
+        var high = text.Length;
+
+        while (low < high)
+        {
+            var middle = (low + high + 1) / 2;
+
+            if (font.Measure(size, text[..middle] + "...") <= maxWidth)
+                low = middle;
+            else
+                high = middle - 1;
+        }
+
+        if (char.IsHighSurrogate(text[low - 1]) && low > 1)
+            low--;
+
+        text = text[..low];
 
         return text + "...";
     }
@@ -70,7 +85,7 @@ public static class Chrome
         if (lines.Count == maxLines && used < words.Length)
             lines[^1] = Clip(font, size, lines[^1] + " " + string.Join(' ', words.Skip(used)), maxWidth);
 
-        return lines;
+        return lines.Select(text => Clip(font, size, text, maxWidth)).ToList();
     }
 
     public static void Box(Canvas c, double x, double y, double w, double h, double radius, uint fill, uint line)
