@@ -170,6 +170,12 @@ public static partial class Markdown
             {
                 var wordWidth = font.Measure(fontSize, words[i]);
 
+                if (wordWidth > width - left)
+                {
+                    words[i] = Chrome.Clip(font, fontSize, words[i], width - left);
+                    wordWidth = font.Measure(fontSize, words[i]);
+                }
+
                 if (x > left && x + wordWidth > width)
                 {
                     x = left;
