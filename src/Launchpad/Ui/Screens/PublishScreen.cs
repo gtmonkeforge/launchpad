@@ -1,14 +1,15 @@
 using System.Text.Json.Nodes;
 using GoomeSharp;
 using Launchpad.Infrastructure;
+using static Launchpad.Ui.Screens.FormKit;
 
 namespace Launchpad.Ui.Screens;
 
 using Ui = GoomeSharp.Ui;
 
-public sealed partial class PublishScreen(Shell shell) : IScreen
+public sealed partial class PublishScreen : IScreen
 {
-    private const double SideMargin = 30;
+    private const double SideMargin = FormKit.Left;
     private const double RightGutter = 57;
     private const double MaxFormWidth = 680;
 
@@ -17,11 +18,11 @@ public sealed partial class PublishScreen(Shell shell) : IScreen
     private static readonly string[] VisibilityValues = ["public", "private", "code"];
     private static readonly string[] StepTitles = ["Identity", "Page", "Release"];
     private static readonly string[] StepHints = ["Name, GUID, visibility", "Description, images, links", "Version and downloads"];
-    private static readonly string[] LoaderIds = ["bepinex5", "bepinex6", "melonloader"];
-    private static readonly string[] LoaderNames = ["BepInEx 5", "BepInEx 6", "MelonLoader"];
-    private static readonly string[] CapabilityIds = ["auto_update", "extensions", "internet"];
-    private static readonly string[] CapabilityNames = ["Auto-updating", "Extensions", "Networking"];
 
+    private readonly Shell shell;
+    private readonly FilePicker _picker = new();
+    private readonly ListingEditor _listing;
+    private readonly ReleaseEditor _release;
     private int _step;
     private string _name = "";
     private string _guid = "";
@@ -31,22 +32,19 @@ public sealed partial class PublishScreen(Shell shell) : IScreen
     private int _author;
     private string _source = "";
     private bool _injector;
-    private string _description = "";
-    private string _logoPath = "";
-    private string _bannerPath = "";
-    private readonly string[] _linkLabels = ["", "", ""];
-    private readonly string[] _linkUrls = ["", "", ""];
-    private readonly bool[] _capabilities = [false, false, false];
-    private string _version = "";
-    private string _notes = "";
-    private readonly string[] _dllPaths = ["", "", ""];
-    private readonly string[] _zipPaths = ["", "", ""];
 
     private List<Author>? _authors;
     private Task? _loadingAuthors;
     private bool _busy;
     private string? _error;
     private string? _publishedGuid;
+
+    public PublishScreen(Shell shell)
+    {
+        this.shell = shell;
+        _listing = new ListingEditor(shell, _picker);
+        _release = new ReleaseEditor(shell, _picker);
+    }
 
     private sealed record Author(string Id, string Name, bool Verified);
 
@@ -69,7 +67,9 @@ public sealed partial class PublishScreen(Shell shell) : IScreen
 
         ui.ScrollBegin("publish", height);
         ui.Pos(0, 0);
-        ui.Custom("publish-origin", 1, 1, ItemFlags.NoHit, out Item _);
+        ui.Custom("publish-origin", 1, 1, ItemFlags.NoHit, out Item origin);
+        _listing.OriginX = origin.X;
+        _listing.OriginY = origin.Y;
 
         var y = DrawHead(ui, formWidth);
 
@@ -86,6 +86,7 @@ public sealed partial class PublishScreen(Shell shell) : IScreen
 
         shell.Footer.Finish(ui, "publish-end", y, height, width);
         ui.ScrollEnd();
+        _picker.Draw(ui);
     }
 
     private double DrawHead(Ui ui, double formWidth)
@@ -126,8 +127,11 @@ public sealed partial class PublishScreen(Shell shell) : IScreen
         Chrome.BoldText(c, Fonts.Main, 17, box.X, box.Y + 16, "Published", Palette.Good);
         Chrome.Text(c, Fonts.Main, 14.5, box.X, box.Y + 46, "Your mod was sent to MonkeForge. Public mods are reviewed first.", Palette.Muted);
 
-        if (ActionButton(ui, "publish-view", "View the mod", SideMargin, y + 80, 150, true))
+        if (ActionButton(ui, "publish-view", "View the mod", SideMargin, y + 80, true))
             shell.Router.Push(new Route(Page.Mod, _publishedGuid));
+
+        if (ActionButton(ui, "publish-manage", "Manage the mod", SideMargin + 150, y + 80))
+            shell.Router.Push(new Route(Page.Manage, _publishedGuid));
 
         return y + 140;
     }
