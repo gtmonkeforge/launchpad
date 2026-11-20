@@ -18,6 +18,7 @@ public sealed class Titlebar(Shell shell)
 
     private readonly Bitmap _logo = Bitmap.Load(LoadLogo());
     private bool _searchFocusWanted;
+    private string? _beforeSlash;
 
     private static byte[] LoadLogo()
     {
@@ -272,9 +273,19 @@ public sealed class Titlebar(Shell shell)
         {
             ui.SetFocus();
             _searchFocusWanted = false;
+            _beforeSlash = text;
         }
 
         var result = ui.InputEx("##titlebar-search", ref text, InputFlags.EnterReturns, "Search mods, authors, GUIDs");
+
+        if (_beforeSlash != null)
+        {
+            if (text == _beforeSlash + "/")
+                text = _beforeSlash;
+
+            _beforeSlash = null;
+        }
+
         shell.Search = text;
         var chip = Chrome.Hit(ui, "search-chip", x + width - 30, 9 + 7, 20, 20);
         Canvas c = ui.Canvas()!;
