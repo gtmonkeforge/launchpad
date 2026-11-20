@@ -86,7 +86,7 @@ public static class Widgets
     {
         var lines = Chrome.Wrap(Fonts.Main, 14, text, width - 32, 3);
         var height = 22 + lines.Count * 21;
-        Chrome.Box(c, x, y, width, height, Palette.Radius, 0x14E5B85C, 0x66E5B85C);
+        Chrome.Box(c, x, y, width, height, Palette.Radius, 0xFF211F1A, 0xFF5E4E2C);
 
         for (var i = 0; i < lines.Count; i++)
             Chrome.Text(c, Fonts.Main, 14, x + 16, y + 21 + i * 21, lines[i], Palette.Warn);

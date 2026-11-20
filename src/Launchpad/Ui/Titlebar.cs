@@ -201,6 +201,12 @@ public sealed class Titlebar(Shell shell)
             shell.Router.Push(new Route(Page.Settings));
         }
 
+        if (ui.Selectable("Game & mod loader", false))
+        {
+            ui.PopupClose();
+            shell.Router.Push(new Route(Page.Game));
+        }
+
         if (ui.Selectable("Sign out", false))
         {
             ui.PopupClose();

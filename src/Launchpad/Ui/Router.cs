@@ -44,7 +44,7 @@ public sealed class Router(Shell shell)
         Page.Library => new LibraryScreen(shell),
         Page.Publish => new PublishScreen(shell),
         Page.Admin => new PlaceholderScreen(shell, "Admin", "/admin"),
-        Page.Game => new PlaceholderScreen(shell, "Game & mod loader", "/"),
+        Page.Game => new GameSettingsScreen(shell),
         Page.Settings => new PlaceholderScreen(shell, "Settings", "/settings"),
         Page.SignIn => new PlaceholderScreen(shell, "Sign in", "/login"),
         _ => new PlaceholderScreen(shell, "Launchpad", "/"),

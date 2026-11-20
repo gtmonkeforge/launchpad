@@ -21,7 +21,7 @@ public sealed class LaunchpadWindow
         LaunchpadTheme.Apply(window.Ui.Theme);
         window.Flags = AppFlags.NoPad;
         window.OnEvent += OnEvent;
-        Shell.Router.Push(new Route(GameLocator.IsGameFolder(app.Settings.GamePath) ? Page.Browse : Page.Settings));
+        Shell.Router.Push(new Route(GameLocator.IsGameFolder(app.Settings.GamePath) ? Page.Browse : Page.Game));
     }
 
     public Shell Shell { get; }
