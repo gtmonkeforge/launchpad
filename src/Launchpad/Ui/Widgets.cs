@@ -60,12 +60,9 @@ public static class Widgets
         Chrome.BoldText(c, Fonts.Main, 17, x + size / 2 - Fonts.Main.Measure(17, letters) / 2, y + size / 2, letters, Palette.Muted);
     }
 
-    public static void PageHead(Canvas c, double left, string title, string? subtitle)
+    public static void PageHead(Canvas c, double x, double y, string title)
     {
-        Chrome.BoldText(c, Fonts.Main, 28, left, 45, title, Palette.Text);
-
-        if (subtitle != null)
-            Chrome.Text(c, Fonts.Main, 14.5, left, 78, subtitle, Palette.Muted);
+        Chrome.BoldText(c, Fonts.Main, 28, x, y + 18, title, Palette.Text);
     }
 
     public static bool EmptyState(Ui ui, string id, double x, double y, double width, string title, string text, string button)
@@ -82,7 +79,7 @@ public static class Widgets
             Chrome.Text(c, Fonts.Main, 14.5, center - Fonts.Main.Measure(14.5, lines[i]) / 2, card.Y + 70 + i * 22, lines[i], Palette.Muted);
 
         var buttonWidth = Fonts.Main.Measure(14, button) + 30;
-        return Button(ui, id + "-button", center - buttonWidth / 2, card.Y + height - 54, button, ButtonKind.Primary, out _);
+        return Button(ui, id + "-button", x + width / 2 - buttonWidth / 2, y + height - 54, button, ButtonKind.Primary, out _);
     }
 
     public static void Notice(Canvas c, double x, double y, double width, string text)

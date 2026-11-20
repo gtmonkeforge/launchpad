@@ -8,6 +8,7 @@ public enum Page
     Publish,
     Admin,
     Settings,
+    Game,
     SignIn,
 }
 
