@@ -62,7 +62,7 @@ public sealed partial class SoftwareScreen : IScreen
             _ => DrawHub(ui, left, column, y),
         };
 
-        PageFrame.End(ui, "software", y);
+        PageFrame.End(ui, _shell, "software", y, height, width);
     }
 
     private double DrawHub(Ui ui, double left, double width, double y)

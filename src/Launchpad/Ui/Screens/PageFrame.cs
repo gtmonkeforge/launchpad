@@ -17,10 +17,9 @@ public static class PageFrame
         return (origin.X, origin.Y);
     }
 
-    public static void End(Ui ui, string id, double bottom)
+    public static void End(Ui ui, Shell shell, string id, double bottom, double height, double width)
     {
-        ui.Pos(0, bottom + 40);
-        ui.Custom(id + "-end", 1, 1, ItemFlags.NoHit, out _);
+        shell.Footer.Finish(ui, id + "-end", bottom, height, width);
         ui.ScrollEnd();
     }
 

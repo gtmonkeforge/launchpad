@@ -34,7 +34,7 @@ public sealed partial class SupportScreen : IScreen
         var column = PageFrame.ColumnWidth(width, MostWidth);
         var left = PageFrame.ColumnLeft(width, column);
         var bottom = DrawView(ui, left, column);
-        PageFrame.End(ui, "support", bottom);
+        PageFrame.End(ui, _shell, "support", bottom, height, width);
     }
 
     private double DrawView(Ui ui, double left, double width)

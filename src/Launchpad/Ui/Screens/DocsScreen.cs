@@ -34,7 +34,7 @@ public sealed partial class DocsScreen : IScreen
         var mainWidth = Math.Max(360, Math.Min(820, width - mainLeft - SideMargin));
         var sidebarBottom = DrawSidebar(ui, 28);
         var mainBottom = DrawMain(ui, mainLeft, mainWidth, 28);
-        PageFrame.End(ui, "docs", Math.Max(sidebarBottom, mainBottom));
+        PageFrame.End(ui, _shell, "docs", Math.Max(sidebarBottom, mainBottom), height, width);
     }
 
     private double DrawMain(Ui ui, double left, double width, double top)

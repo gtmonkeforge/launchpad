@@ -44,7 +44,7 @@ public sealed class LegalScreen : IScreen
         Chrome.Text(ui.Canvas()!, Fonts.Mono, 12.5, updated.X, updated.Y + 10, LegalText.Updated, Palette.Faint);
 
         var bottom = DrawPanel(ui, left, 140, column);
-        PageFrame.End(ui, "legal", bottom);
+        PageFrame.End(ui, _shell, "legal", bottom, height, width);
     }
 
     private double DrawPanel(Ui ui, double left, double top, double width)

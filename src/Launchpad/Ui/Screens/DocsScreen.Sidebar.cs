@@ -48,11 +48,11 @@ public sealed partial class DocsScreen
         var current = slug == _slug;
 
         if (current)
-            c.DrawRRect(row.X, row.Y, SidebarWidth, 32, 8, Palette.AccentSoft);
+            c.DrawRRect(row.X, row.Y, SidebarWidth, 32, 8, Palette.Surface2);
         else if (row.Hovered)
             c.DrawRRect(row.X, row.Y, SidebarWidth, 32, 8, Palette.Surface);
 
-        Chrome.Text(c, Fonts.Main, 14, row.X + 12, row.Y + 16, Chrome.Clip(Fonts.Main, 14, title, SidebarWidth - 24), current ? Palette.Accent : row.Hovered ? Palette.Text : Palette.Muted);
+        Chrome.Text(c, Fonts.Main, 14, row.X + 12, row.Y + 16, Chrome.Clip(Fonts.Main, 14, title, SidebarWidth - 24), current || row.Hovered ? Palette.Text : Palette.Muted);
 
         if (row.Clicked && !current)
             Open(slug);
