@@ -36,6 +36,14 @@ public sealed class Footer(Shell shell)
     private string? _forge;
     private bool _asked;
 
+    public void Finish(Ui ui, string id, double bottom, double height, double width)
+    {
+        var top = Math.Max(bottom + 40, height - Height);
+        Draw(ui, top, width);
+        ui.Pos(0, top + Height);
+        ui.Custom(id, 1, 1, ItemFlags.NoHit, out _);
+    }
+
     public void Draw(Ui ui, double y, double width)
     {
         Ask();

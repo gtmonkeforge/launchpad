@@ -84,8 +84,7 @@ public sealed partial class PublishScreen(Shell shell) : IScreen
         else
             y = DrawStep(ui, formWidth, y);
 
-        ui.Pos(0, y + 40);
-        ui.Custom("publish-end", 1, 1, ItemFlags.NoHit, out Item _);
+        shell.Footer.Finish(ui, "publish-end", y, height, width);
         ui.ScrollEnd();
     }
 

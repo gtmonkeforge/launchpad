@@ -37,6 +37,11 @@ public sealed partial class ModScreen : IScreen
 
     public void Reload() => Load();
 
+    public void Dispose()
+    {
+        _shell.App.Mods.Changed -= LoadInstalled;
+    }
+
     public void Draw(Ui ui, double width, double height)
     {
         ui.ScrollBegin("mod", height);
@@ -54,8 +59,7 @@ public sealed partial class ModScreen : IScreen
         else
             bottom = DrawMod(ui, contentWidth, bottom + 14);
 
-        ui.Pos(0, bottom + 40);
-        ui.Custom("mod-end", 1, 1, ItemFlags.NoHit, out _);
+        _shell.Footer.Finish(ui, "mod-end", bottom, height, width);
         ui.ScrollEnd();
     }
 

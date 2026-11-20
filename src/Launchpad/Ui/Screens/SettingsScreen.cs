@@ -45,6 +45,12 @@ public sealed partial class SettingsScreen : IScreen
         _loadedSection = -1;
     }
 
+    public void Leave()
+    {
+        if (_accent != _savedAccent)
+            SetAccent(_savedAccent);
+    }
+
     public void Draw(Ui ui, double width, double height)
     {
         ui.ScrollBegin("settings", height);
@@ -58,8 +64,7 @@ public sealed partial class SettingsScreen : IScreen
             Open(clicked);
 
         var bottom = DrawSection(ui, SettingsNav.ContentLeft, SettingsNav.ContentWidth(width));
-        ui.Pos(0, Math.Max(bottom, TopMargin + Entries.Length * SettingsNav.RowHeight) + 40);
-        ui.Custom("settings-end", 1, 1, ItemFlags.NoHit, out _);
+        shell.Footer.Finish(ui, "settings-end", Math.Max(bottom, TopMargin + Entries.Length * SettingsNav.RowHeight), height, width);
         ui.ScrollEnd();
     }
 

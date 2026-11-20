@@ -24,16 +24,20 @@ public sealed partial class LibraryScreen : IScreen
     public LibraryScreen(Shell shell)
     {
         this.shell = shell;
-        shell.App.Mods.Changed += () =>
-        {
-            if (Active)
-                Load(false);
-        };
-        shell.App.Forge.SessionChanged += () =>
-        {
-            if (Active)
-                Load(false);
-        };
+        shell.App.Mods.Changed += Refresh;
+        shell.App.Forge.SessionChanged += Refresh;
+    }
+
+    public void Dispose()
+    {
+        shell.App.Mods.Changed -= Refresh;
+        shell.App.Forge.SessionChanged -= Refresh;
+    }
+
+    private void Refresh()
+    {
+        if (Active)
+            Load(false);
     }
 
     public void Reload() => Load(true);
@@ -52,8 +56,7 @@ public sealed partial class LibraryScreen : IScreen
         _ox = origin.X;
         _oy = origin.Y;
         var bottom = GameLocator.IsGameFolder(shell.App.Settings.GamePath) ? DrawLibrary(ui, width) : DrawNoGame(ui, width);
-        ui.Pos(0, bottom + 40);
-        ui.Custom("library-end", 1, 1, ItemFlags.NoHit, out _);
+        shell.Footer.Finish(ui, "library-end", bottom, height, width);
         ui.ScrollEnd();
         DrawConfirm(ui);
     }

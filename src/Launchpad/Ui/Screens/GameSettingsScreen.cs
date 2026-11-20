@@ -37,6 +37,11 @@ public sealed partial class GameSettingsScreen : IScreen
         shell.App.Event += OnAppEvent;
     }
 
+    public void Dispose()
+    {
+        shell.App.Event -= OnAppEvent;
+    }
+
     public void Reload()
     {
         Scan();
@@ -72,8 +77,7 @@ public sealed partial class GameSettingsScreen : IScreen
             _ => DrawAbout(ui, x, NavTop, panel),
         };
 
-        ui.Pos(0, Math.Max(y, NavTop + Entries.Length * SettingsNav.RowHeight) + 40);
-        ui.Custom("game-end", 1, 1, ItemFlags.NoHit, out _);
+        shell.Footer.Finish(ui, "game-end", Math.Max(y, NavTop + Entries.Length * SettingsNav.RowHeight), height, width);
         ui.ScrollEnd();
         DrawFolderDialog(ui);
     }
