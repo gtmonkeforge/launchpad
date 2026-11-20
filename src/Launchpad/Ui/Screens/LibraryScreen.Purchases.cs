@@ -20,7 +20,7 @@ public sealed partial class LibraryScreen
             var width = Fonts.Main.Measure(14, label) + 30;
 
             if (Widgets.Button(ui, "library-receipts", left + inner - width, y - 2, label, ButtonKind.Subtle, out _))
-                shell.OpenForge((shell.User.Str("profile_url") ?? "/settings") + "#purchases");
+                shell.Router.Push(new Route(Page.Settings, "purchases"));
         }
 
         y += 46;

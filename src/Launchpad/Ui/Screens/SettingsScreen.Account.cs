@@ -1,4 +1,8 @@
+using System.Net.Http.Headers;
+using System.Text.Json;
+using GoomeSharp;
 using Launchpad.Infrastructure;
+
 namespace Launchpad.Ui.Screens;
 
 using Ui = GoomeSharp.Ui;
@@ -6,10 +10,21 @@ using Ui = GoomeSharp.Ui;
 public sealed partial class SettingsScreen
 {
     private const string IdHint = "Share this with mod authors who want to add you to a private release channel.";
-    private const string SessionHint = "You stay signed in for 30 days on this computer. Signing out ends this session only. To sign out everywhere, use the security settings on monkeforge.org.";
+    private const string SessionHint = "You stay signed in for 30 days on this computer. Signing out ends this session only. To sign out everywhere, use Sign-in & security.";
+    private const string DeleteHint = "Deleting your account is done by MonkeForge staff so your mods and purchases are handled properly. Open a support ticket from the website and they will take care of it.";
+
+    private string _publicName = "";
+    private string _bio = "";
+    private string _avatarPath = "";
+    private bool _profileFilled;
+    private bool _savingProfile;
 
     private double DrawAccount(Ui ui, double left, double width)
     {
+        if (Waiting(ui, left, width, out var bottom))
+            return bottom;
+
+        FillProfile();
         var user = shell.User!;
         var name = user.Str("display_name") ?? user.Str("name") ?? "?";
         var details = "@" + user.Str("username") + (user.Str("discord_username") is { } discord ? " · Discord @" + discord : " · Email account");
@@ -23,29 +38,136 @@ public sealed partial class SettingsScreen
         if (user.Str("profile_url") is { Length: > 0 } url && Card.Button(ui, "View profile", left + width - 142, y + 30, 120))
             shell.OpenForge(url);
 
-        y += 96 + 16;
-        var idHeight = 130 + Card.HintHeight(IdHint, width) - 36;
-        Card id = Card.Open(ui, "account-id", left, y, width, idHeight, "Account ID");
-        var below = 44 + id.Hint(0, 44, width, IdHint);
-        id.Text(Card.Padding, below + 22, 13.5, user.Str("id") ?? "", Palette.Text, true);
+        y = DrawProfileForm(ui, left, y + 96 + 16, width);
+        y = DrawAccountId(ui, left, y + 16, width, user.Str("id") ?? "");
+        y = DrawSessionCard(ui, left, y + 16, width);
+        return DrawDeleteCard(ui, left, y + 16, width);
+    }
+
+    private void FillProfile()
+    {
+        if (_profileFilled)
+            return;
+
+        _profileFilled = true;
+        _publicName = _data.Str("public_username") ?? _data.Str("username") ?? "";
+        _bio = _data.Str("description") ?? "";
+    }
+
+    private double DrawProfileForm(Ui ui, double left, double y, double width)
+    {
+        const double height = 392;
+        Card card = Card.Open(ui, "account-edit", left, y, width, height, "Public profile");
+        var field = width - Card.Padding * 2;
+
+        card.Text(Card.Padding, 62, 13, "Username", Palette.Muted);
+        ui.Pos(left + Card.Padding, y + 76);
+        ui.Size(Math.Min(field, 360), 36);
+        ui.InputEx("##profile-name", ref _publicName, InputFlags.None, "Username", 32);
+
+        card.Text(Card.Padding, 134, 13, "About you", Palette.Muted);
+        ui.Pos(left + Card.Padding, y + 148);
+        ui.Size(field, 100);
+        ui.TextEdit("##profile-bio", ref _bio, 100, EditFlags.Wrap, 3000);
+
+        card.Text(Card.Padding, 270, 13, "Picture (path to a PNG, JPG or WebP file)", Palette.Muted);
+        ui.Pos(left + Card.Padding, y + 284);
+        ui.Size(field - 160, 36);
+        ui.InputEx("##profile-avatar", ref _avatarPath, InputFlags.None, "/home/you/me.png", 400);
+
+        if (Card.Button(ui, "Remove", left + width - Card.Padding - 144, y + 284, 144))
+            SaveProfile(true);
+
+        if (Widgets.Button(ui, "profile-save", left + Card.Padding, y + height - 52, _savingProfile ? "Saving..." : "Save profile", ButtonKind.Primary, out _, !_savingProfile, 34))
+            SaveProfile(false);
+
+        return y + height;
+    }
+
+    private void SaveProfile(bool removeAvatar)
+    {
+        var id = shell.User.Str("id") ?? "";
+        var name = _publicName.Trim();
+        var bio = _bio;
+        var avatar = removeAvatar ? "" : _avatarPath.Trim();
+        _savingProfile = true;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var profile = new Dictionary<string, object?> { ["description"] = bio, ["remove_avatar"] = removeAvatar };
+
+                if (name.Length > 0)
+                    profile["public_username"] = name;
+
+                var form = new MultipartFormDataContent { { new StringContent(JsonSerializer.Serialize(profile)), "profile" } };
+
+                if (avatar.Length > 0)
+                {
+                    if (!File.Exists(avatar))
+                        throw new UserFacingException("That picture file doesn't exist.");
+
+                    var file = new ByteArrayContent(await File.ReadAllBytesAsync(avatar));
+                    file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                    form.Add(file, "avatar", Path.GetFileName(avatar));
+                }
+
+                using var response = await shell.App.Forge.SendAsync(HttpMethod.Put, "/api/v1/users/" + Uri.EscapeDataString(id), form);
+                await shell.App.Forge.RefreshSessionAsync();
+                _avatarPath = "";
+                shell.Toast(removeAvatar ? "Picture removed." : "Profile saved.");
+            }
+            catch (UserFacingException ex)
+            {
+                shell.Toast(ex.Message);
+            }
+
+            _savingProfile = false;
+            shell.Invalidate();
+        });
+    }
+
+    private double DrawAccountId(Ui ui, double left, double y, double width, string id)
+    {
+        var height = 130 + Card.HintHeight(IdHint, width) - 36;
+        Card card = Card.Open(ui, "account-id", left, y, width, height, "Account ID");
+        var below = 44 + card.Hint(0, 44, width, IdHint);
+        card.Text(Card.Padding, below + 22, 13.5, id, Palette.Text, true);
 
         if (Card.Button(ui, "Copy", left + width - 102, y + below + 5, 80))
         {
-            shell.Window.Goome.Clipboard = user.Str("id") ?? "";
+            shell.Window.Goome.Clipboard = id;
             shell.Toast("Account ID copied.");
         }
 
-        y += idHeight + 16;
-        var sessionHeight = 120 + Card.HintHeight(SessionHint, width);
-        Card session = Card.Open(ui, "account-session", left, y, width, sessionHeight, "Session");
-        session.Hint(0, 44, width, SessionHint);
+        return y + height;
+    }
 
-        if (Card.Button(ui, "Sign out", left + Card.Padding, y + sessionHeight - 56, 110))
+    private double DrawSessionCard(Ui ui, double left, double y, double width)
+    {
+        var height = 120 + Card.HintHeight(SessionHint, width);
+        Card card = Card.Open(ui, "account-session", left, y, width, height, "Session");
+        card.Hint(0, 44, width, SessionHint);
+
+        if (Card.Button(ui, "Sign out", left + Card.Padding, y + height - 56, 110))
         {
             shell.SignOut();
             shell.Router.Push(new Route(Page.Browse));
         }
 
-        return y + sessionHeight;
+        return y + height;
+    }
+
+    private double DrawDeleteCard(Ui ui, double left, double y, double width)
+    {
+        var height = 120 + Card.HintHeight(DeleteHint, width);
+        Card card = Card.Open(ui, "account-delete", left, y, width, height, "Delete account");
+        card.Hint(0, 44, width, DeleteHint);
+
+        if (Widgets.Button(ui, "account-delete-open", left + Card.Padding, y + height - 56, "Contact support", ButtonKind.Danger, out _, true, 36))
+            shell.OpenForge("/support");
+
+        return y + height;
     }
 }

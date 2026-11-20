@@ -82,8 +82,15 @@ public sealed partial class SettingsScreen
             LaunchpadTheme.Apply(shell.Window.Ui.Theme);
         }
 
-        if (Widgets.Button(ui, "accent-reset", x + 188, y + 3, "Reset", ButtonKind.Subtle, out _, true, 34))
+        if (Widgets.Button(ui, "accent-reset", x + 188, y + 3, "Reset", ButtonKind.Subtle, out var resetWidth, true, 34))
             SetAccent(Palette.DefaultAccent);
+
+        var picked = 0xFF000000 | Convert.ToUInt32(_accent[1..], 16);
+        ui.Pos(x + 188 + resetWidth + 12, y);
+        ui.Size(120, 40);
+
+        if (ui.Color("##accent-picker", ref picked))
+            SetAccent("#" + (picked & 0xFFFFFF).ToString("x6"));
     }
 
     private void DrawSample(Ui ui, double x, double y)

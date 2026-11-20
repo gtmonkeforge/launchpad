@@ -19,13 +19,11 @@ public sealed partial class LibraryScreen
 
     private bool Active => ReferenceEquals(shell.Router.Screen, this);
 
-    private string? Latest(InstalledView mod) => _details.TryGetValue(mod.Guid, out JsonNode? detail) ? detail.Str("current_version") : null;
+    private Dictionary<string, UpdateInfo> _updates = [];
 
-    private bool Outdated(InstalledView mod)
-    {
-        var latest = Latest(mod);
-        return latest != null && latest != mod.Version;
-    }
+    private string? Latest(InstalledView mod) => _updates.TryGetValue(mod.Guid, out UpdateInfo? update) ? update.Latest : null;
+
+    private bool Outdated(InstalledView mod) => _updates.TryGetValue(mod.Guid, out UpdateInfo? update) && update.Available;
 
     private bool Inactive(InstalledView mod) => mod.Loader != _loader;
 
@@ -59,6 +57,20 @@ public sealed partial class LibraryScreen
             if (request != _request)
                 return;
 
+            var updates = new List<UpdateInfo>();
+
+            try
+            {
+                updates = await shell.App.Mods.CheckUpdatesAsync(CancellationToken.None);
+            }
+            catch (UserFacingException)
+            {
+            }
+
+            if (request != _request)
+                return;
+
+            _updates = updates.GroupBy(update => update.Guid).ToDictionary(group => group.Key, group => group.First());
             _mods = mods;
             _loader = shell.App.Settings.Loader.Id();
             _gameRunning = Game.GameProcess.IsRunning();

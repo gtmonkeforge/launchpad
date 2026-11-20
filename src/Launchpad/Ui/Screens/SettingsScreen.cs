@@ -66,6 +66,8 @@ public sealed partial class SettingsScreen : IScreen
         var bottom = DrawSection(ui, SettingsNav.ContentLeft, SettingsNav.ContentWidth(width));
         shell.Footer.Finish(ui, "settings-end", Math.Max(bottom, TopMargin + Entries.Length * SettingsNav.RowHeight), height, width);
         ui.ScrollEnd();
+        DrawPurchaseDialogs(ui);
+        DrawSecurityDialogs(ui);
     }
 
     private void Open(int index)
@@ -128,24 +130,15 @@ public sealed partial class SettingsScreen : IScreen
         return TopMargin + height;
     }
 
-    private static string? PathFor(string key) => key switch
-    {
-        "emails" => "/api/v1/account",
-        "keys" => "/api/v1/api-keys",
-        "devices" => "/api/v1/injector/devices",
-        "payouts" => "/api/v1/payouts",
-        _ => null,
-    };
-
     private void StartLoad()
     {
         _loadedSection = _section;
         _data = null;
         _error = null;
-        var path = PathFor(Sections[_section].Key);
+        var key = Sections[_section].Key;
 
-        if (path == null)
-            return;
+        if (key == "account")
+            _profileFilled = false;
 
         var request = ++_request;
 
@@ -153,7 +146,7 @@ public sealed partial class SettingsScreen : IScreen
         {
             try
             {
-                JsonNode result = await shell.App.Forge.GetJsonAsync(path);
+                JsonNode? result = await Fetch(key);
 
                 if (request == _request)
                     _data = result;
@@ -166,6 +159,30 @@ public sealed partial class SettingsScreen : IScreen
 
             shell.Invalidate();
         });
+    }
+
+    private async Task<JsonNode?> Fetch(string key)
+    {
+        var forge = shell.App.Forge;
+
+        switch (key)
+        {
+            case "emails":
+            case "security":
+                return await forge.GetJsonAsync("/api/v1/account");
+            case "keys":
+                return await forge.GetJsonAsync("/api/v1/api-keys");
+            case "devices":
+                return await forge.GetJsonAsync("/api/v1/injector/devices");
+            case "account":
+                return await forge.GetJsonAsync("/api/v1/users/" + Uri.EscapeDataString(forge.UserId ?? ""));
+            case "payouts":
+                return await FetchPayouts();
+            case "purchases":
+                return await FetchPurchases();
+            default:
+                return new JsonObject();
+        }
     }
 
     private bool Waiting(Ui ui, double left, double width, out double bottom)

@@ -70,6 +70,11 @@ public sealed class Card
         Widgets.Pill(_canvas, _x + right - width, _y + top, text, color);
     }
 
+    public double Pill(double left, double top, string text, uint color)
+    {
+        return Widgets.Pill(_canvas, _x + left, _y + top, text, color);
+    }
+
     public static double HintHeight(string text, double width)
     {
         return Chrome.Wrap(Fonts.Main, 14, text, width - Padding * 2, 8).Count * LineHeight;

@@ -144,17 +144,4 @@ public sealed partial class SettingsScreen
 
         return TopMargin + height;
     }
-
-    private double DrawSecurity(Ui ui, double left, double width)
-    {
-        var text = "Your email address, password, passkeys and signing out everywhere are tied to monkeforge.org, so manage them there.";
-        var height = 116 + Card.HintHeight(text, width);
-        Card card = Card.Open(ui, "security-panel", left, TopMargin, width, height, "Sign-in & security");
-        card.Hint(0, 46, width, text);
-
-        if (Card.Button(ui, "Open on monkeforge.org", left + Card.Padding, TopMargin + height - 56, 220))
-            shell.OpenForge("/settings/security");
-
-        return TopMargin + height;
-    }
 }

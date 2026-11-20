@@ -29,6 +29,11 @@ public static partial class Format
         return currency.ToLowerInvariant() == "usd" ? "$" + whole.ToString("0.00", CultureInfo.InvariantCulture) : whole.ToString("0.00", CultureInfo.InvariantCulture) + " " + currency.ToUpperInvariant();
     }
 
+    public static string Date(string? text)
+    {
+        return DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var when) && when.Year >= 2000 ? when.ToString("MMM d, yyyy", CultureInfo.InvariantCulture) : "";
+    }
+
     public static string Ago(string? text, string fallback = "")
     {
         return DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var when) ? Ago(when) : fallback;

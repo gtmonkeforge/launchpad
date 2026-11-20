@@ -7,10 +7,9 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class SettingsScreen
 {
-    private const string ChannelHint = "Mod authors can share 25-character codes for private betas. Paste the whole code below.";
-    private const string PurchasesHint = "Mods you buy show up in your Library, where you can install them. Receipts and disputes are on monkeforge.org.";
+    private const string ChannelHint = "Mod authors can share 25-character codes for private betas. Paste the whole code into the first box.";
 
-    private string _code = "";
+    private readonly string[] _codeParts = ["", "", "", "", ""];
     private string _unlockStatus = "";
     private string? _unlockUrl;
     private bool _unlocking;
@@ -20,12 +19,10 @@ public sealed partial class SettingsScreen
         var height = 170 + Card.HintHeight(ChannelHint, width) + (_unlockStatus.Length > 0 ? 34 : 0);
         Card card = Card.Open(ui, "channels-panel", left, TopMargin, width, height, "Unlock a release channel");
         var top = 44 + card.Hint(0, 44, width, ChannelHint) + 10;
+        DrawCodeBoxes(ui, left + Card.Padding, TopMargin + top, Math.Min(width - Card.Padding * 2, 520));
+        var code = string.Concat(_codeParts);
 
-        ui.Pos(left + Card.Padding, TopMargin + top);
-        ui.Size(Math.Min(width - Card.Padding * 2, 420), 38);
-        ui.InputEx("##channel-code", ref _code, GoomeSharp.InputFlags.None, "XXXXX-XXXXX-XXXXX-XXXXX-XXXXX", 29);
-
-        if (Widgets.Button(ui, "channels-unlock", left + Card.Padding, TopMargin + top + 52, _unlocking ? "Unlocking..." : "Unlock channel", ButtonKind.Primary, out _, !_unlocking && _code.Trim().Length > 0, 36))
+        if (Widgets.Button(ui, "channels-unlock", left + Card.Padding, TopMargin + top + 52, _unlocking ? "Unlocking..." : "Unlock channel", ButtonKind.Primary, out _, !_unlocking && code.Length > 0, 36, Glyphs.Lock))
             Unlock();
 
         if (_unlockStatus.Length > 0)
@@ -37,9 +34,45 @@ public sealed partial class SettingsScreen
         return TopMargin + height;
     }
 
+    private void DrawCodeBoxes(Ui ui, double x, double y, double width)
+    {
+        var box = (width - 4 * 22) / 5;
+
+        for (var i = 0; i < 5; i++)
+        {
+            var text = _codeParts[i];
+            ui.Pos(x + i * (box + 22), y);
+            ui.Size(box, 38);
+
+            if (ui.InputEx("##channel-code-" + i, ref text, GoomeSharp.InputFlags.None, "XXXXX", 40) > 0)
+                TakeCodePart(i, text);
+
+            if (i == 4)
+                continue;
+
+            GoomeSharp.Item dash = Chrome.Hit(ui, "channel-dash-" + i, x + i * (box + 22) + box, y, 22, 38);
+            Chrome.Text(ui.Canvas()!, Fonts.Main, 16, dash.X + 6, dash.Y + 19, "–", Palette.Muted);
+        }
+    }
+
+    private void TakeCodePart(int index, string typed)
+    {
+        var cleaned = Regex.Replace(typed.ToUpperInvariant(), "[^A-Z0-9]", "");
+
+        if (cleaned.Length >= 25)
+        {
+            for (var i = 0; i < 5; i++)
+                _codeParts[i] = cleaned.Substring(i * 5, 5);
+
+            return;
+        }
+
+        _codeParts[index] = cleaned.Length > 5 ? cleaned[..5] : cleaned;
+    }
+
     private void Unlock()
     {
-        var code = Regex.Replace(_code.ToUpperInvariant(), "[^A-Z0-9]", "");
+        var code = string.Concat(_codeParts);
         _unlocking = true;
         _unlockUrl = null;
 
@@ -59,7 +92,7 @@ public sealed partial class SettingsScreen
                 var result = await shell.App.Forge.SendJsonAsync(HttpMethod.Post, "/api/v1/channels/unlock", new { code = dashed });
                 _unlockStatus = "Unlocked " + result.Str("name") + ".";
                 _unlockUrl = result.Str("url");
-                _code = "";
+                Array.Fill(_codeParts, "");
             }
             catch (UserFacingException ex)
             {
@@ -69,21 +102,5 @@ public sealed partial class SettingsScreen
             _unlocking = false;
             shell.Invalidate();
         });
-    }
-
-    private double DrawPurchases(Ui ui, double left, double width)
-    {
-        var height = 136 + Card.HintHeight(PurchasesHint, width);
-        Card card = Card.Open(ui, "purchases-panel", left, TopMargin, width, height, "Your purchases");
-        card.Hint(0, 44, width, PurchasesHint);
-        var top = TopMargin + height - 58;
-
-        if (Widgets.Button(ui, "purchases-library", left + Card.Padding, top, "Open Library", ButtonKind.Primary, out var buttonWidth, true, 36))
-            shell.Router.Push(new Route(Page.Library));
-
-        if (Widgets.Button(ui, "purchases-receipts", left + Card.Padding + buttonWidth + 10, top, "Receipts and disputes", ButtonKind.Subtle, out _, true, 36))
-            shell.OpenForge((shell.User.Str("profile_url") ?? "/settings") + "#purchases");
-
-        return TopMargin + height;
     }
 }
