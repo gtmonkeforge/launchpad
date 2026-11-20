@@ -198,7 +198,11 @@ public sealed class Titlebar(Shell shell)
             if (ui.Selectable(body, false) && Notifications.Link(item) is { Length: > 0 } link)
             {
                 ui.PopupClose();
-                shell.OpenForge(link);
+
+                if (link.StartsWith("/profile", StringComparison.Ordinal))
+                    shell.Router.Push(new Route(Page.Profile, link.Contains('#') ? "me#purchases" : null));
+                else
+                    shell.OpenForge(link);
             }
         }
 
@@ -332,6 +336,12 @@ public sealed class Titlebar(Shell shell)
         ui.Custom("account-width", 190, 1, ItemFlags.NoHit, out _);
         ui.Label(Chrome.Clip(Fonts.Main, 14, name, 170));
         ui.Separator();
+
+        if (ui.Selectable("Your profile", false))
+        {
+            ui.PopupClose();
+            shell.Router.Push(new Route(Page.Profile));
+        }
 
         if (ui.Selectable("Settings", false))
         {
