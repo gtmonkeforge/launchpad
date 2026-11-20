@@ -6,10 +6,6 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class SoftwareScreen
 {
-    private const string LaunchpadSource = "https://github.com/gtmonkeforge/launchpad";
-    private const string CliSource = "https://github.com/gtmonkeforge/cli";
-    private const string OpenForgeSource = "https://github.com/gtmonkeforge/openforge";
-
     private static readonly (string Title, string Text)[] LaunchpadFeatures =
     [
         ("Mods", "Search MonkeForge, read reviews and install or remove mods. Each mod can follow its own release channel, so you can try a dev build of one mod without changing the rest."),
@@ -62,7 +58,7 @@ public sealed partial class SoftwareScreen
         [
             ("Windows", () => _shell.OpenForge("/app/launchpad_setup.exe"), ButtonKind.Primary),
             ("Linux", () => _shell.OpenForge("/app/launchpad.tar.gz"), ButtonKind.Subtle),
-            ("Source", () => PageFrame.OpenLink(_shell, LaunchpadSource), ButtonKind.Subtle),
+            ("Source", () => PageFrame.OpenLink(_shell, "https://github.com/gtmonkeforge/launchpad"), ButtonKind.Subtle),
         ], "v" + _launchpadVersion);
 
         y = Heading(ui, left, y, "Features");
@@ -73,7 +69,7 @@ public sealed partial class SoftwareScreen
     {
         y = Header(ui, left, width, y, "mforge", "mforge installs and updates MonkeForge mods from the command line. It's written in Go and released under the MIT license.",
         [
-            ("Source", () => PageFrame.OpenLink(_shell, CliSource), ButtonKind.Subtle),
+            ("Source", () => PageFrame.OpenLink(_shell, "https://github.com/gtmonkeforge/cli"), ButtonKind.Subtle),
         ]);
 
         y = Heading(ui, left, y, "Install");
@@ -102,8 +98,8 @@ public sealed partial class SoftwareScreen
     {
         y = Header(ui, left, width, y, "OpenForge", "OpenForge is the server that runs MonkeForge. It's open source, so you can host your own.",
         [
-            ("Releases", () => PageFrame.OpenLink(_shell, OpenForgeSource + "/releases"), ButtonKind.Primary),
-            ("Source", () => PageFrame.OpenLink(_shell, OpenForgeSource), ButtonKind.Subtle),
+            ("Releases", () => PageFrame.OpenLink(_shell, "https://github.com/gtmonkeforge/openforge/releases"), ButtonKind.Primary),
+            ("Source", () => PageFrame.OpenLink(_shell, "https://github.com/gtmonkeforge/openforge"), ButtonKind.Subtle),
         ], _forgeVersion == null ? null : "v" + _forgeVersion);
 
         y = Heading(ui, left, y, "Features");
