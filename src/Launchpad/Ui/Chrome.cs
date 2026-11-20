@@ -30,6 +30,9 @@ public static class Chrome
 
     public static string Clip(Font font, double size, string text, double maxWidth)
     {
+        if (maxWidth <= 0)
+            return "";
+
         if (font.Measure(size, text) <= maxWidth)
             return text;
 
