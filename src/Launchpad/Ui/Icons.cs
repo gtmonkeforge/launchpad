@@ -90,6 +90,17 @@ public static class Icons
         c.DrawLine(x - 5, y + 2, x - 2, y + 5, 1.3, color);
     }
 
+    public static void Trash(Canvas c, double x, double y, uint color)
+    {
+        c.DrawLine(x - 6, y - 4, x + 6, y - 4, 1.3, color);
+        c.DrawLine(x - 2, y - 4, x - 2, y - 6, 1.3, color);
+        c.DrawLine(x + 2, y - 4, x + 2, y - 6, 1.3, color);
+        c.DrawLine(x - 2, y - 6, x + 2, y - 6, 1.3, color);
+        c.DrawLine(x - 4.5, y - 4, x - 4, y + 6, 1.3, color);
+        c.DrawLine(x + 4.5, y - 4, x + 4, y + 6, 1.3, color);
+        c.DrawLine(x - 4, y + 6, x + 4, y + 6, 1.3, color);
+    }
+
     public static void SmallClose(Canvas c, double x, double y, uint color)
     {
         c.DrawLine(x - 3.5, y - 3.5, x + 3.5, y + 3.5, 1.4, color);

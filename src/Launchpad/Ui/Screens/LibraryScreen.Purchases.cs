@@ -52,7 +52,7 @@ public sealed partial class LibraryScreen
         Chrome.Box(c, box.X, box.Y, inner, height, Palette.RadiusLarge, Palette.Surface, Palette.Line);
         Chrome.Text(c, Fonts.Main, 14.5, box.X + 20, box.Y + height / 2, text, Palette.Muted);
 
-        if (button != null && Widgets.Button(ui, "library-signin", left + inner - 100, y + 16, button, ButtonKind.Primary, out _))
+        if (button != null && Widgets.Button(ui, "library-signin", left + inner - Widgets.ButtonWidth(button, true) - 16, y + 16, button, ButtonKind.Primary, out _, true, 34, Icons.User))
             shell.SignIn();
 
         return y + height;

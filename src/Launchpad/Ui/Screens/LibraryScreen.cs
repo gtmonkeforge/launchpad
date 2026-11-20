@@ -111,19 +111,18 @@ public sealed partial class LibraryScreen : IScreen
         if (updatable >= 2)
         {
             var label2 = "Update all";
-            var buttonWidth = Fonts.Main.Measure(14, label2) + 30;
-            right -= buttonWidth;
+            right -= Widgets.ButtonWidth(label2, true);
 
-            if (Widgets.Button(ui, "library-update-all", right, 29, label2, ButtonKind.Primary, out _, _busy.Count == 0))
+            if (Widgets.Button(ui, "library-update-all", right, 29, label2, ButtonKind.Primary, out _, _busy.Count == 0, 34, Icons.Download))
                 UpdateAll();
 
             right -= 10;
         }
 
         var check = _loading ? "Checking..." : "Check for updates";
-        right -= Fonts.Main.Measure(14, check) + 30;
+        right -= Widgets.ButtonWidth(check, true);
 
-        if (Widgets.Button(ui, "library-refresh", right, 29, check, ButtonKind.Subtle, out _, !_loading))
+        if (Widgets.Button(ui, "library-refresh", right, 29, check, ButtonKind.Subtle, out _, !_loading, 34, Icons.Reload))
             Load(true);
     }
 
@@ -138,10 +137,10 @@ public sealed partial class LibraryScreen : IScreen
 
         if (_mods.Count == 0)
         {
-            if (Widgets.EmptyState(ui, "library-empty", left, y, inner, "No mods installed yet", "Find something you like and install it from its page.", "Browse mods"))
+            if (Widgets.EmptyState(ui, "library-empty", left, y, inner, "No mods installed yet", "Find something you like and install it from its page.", "Browse mods", (canvas, iconX, iconY, color) => Icons.Category(canvas, "", iconX, iconY, color)))
                 shell.Router.Push(new Route(Page.Browse));
 
-            return y + 170;
+            return y + 206;
         }
 
         foreach (InstalledView mod in _mods)
@@ -198,9 +197,9 @@ public sealed partial class LibraryScreen : IScreen
     private void DrawRowButtons(Ui ui, InstalledView mod, string name, double right, double y, bool busy)
     {
         var remove = busy ? "Working..." : "Remove";
-        right -= Fonts.Main.Measure(14, remove) + 30;
+        right -= Widgets.ButtonWidth(remove, true);
 
-        if (Widgets.Button(ui, "library-remove-" + mod.Guid, right, y, remove, ButtonKind.Danger, out _, !busy))
+        if (Widgets.Button(ui, "library-remove-" + mod.Guid, right, y, remove, ButtonKind.Danger, out _, !busy, 34, Icons.Trash))
         {
             _confirming = mod;
             _confirmOpen = true;
@@ -209,9 +208,9 @@ public sealed partial class LibraryScreen : IScreen
         if (!Outdated(mod) || Inactive(mod) || busy)
             return;
 
-        right -= Fonts.Main.Measure(14, "Update") + 30 + 8;
+        right -= Widgets.ButtonWidth("Update", true) + 8;
 
-        if (Widgets.Button(ui, "library-update-" + mod.Guid, right, y, "Update", ButtonKind.Primary, out _))
+        if (Widgets.Button(ui, "library-update-" + mod.Guid, right, y, "Update", ButtonKind.Primary, out _, true, 34, Icons.Download))
             Install(mod.Guid, mod.Channel, name, true);
     }
 

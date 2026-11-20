@@ -14,10 +14,13 @@ public enum ButtonKind
 public static class Widgets
 {
     public const double PillHeight = 23;
+    public const double IconSpace = 22;
 
-    public static bool Button(Ui ui, string id, double x, double y, string text, ButtonKind kind, out double width, bool enabled = true, double height = 34)
+    public static double ButtonWidth(string text, bool icon = false) => Fonts.Main.Measure(14, text) + 30 + (icon ? IconSpace : 0);
+
+    public static bool Button(Ui ui, string id, double x, double y, string text, ButtonKind kind, out double width, bool enabled = true, double height = 34, Action<Canvas, double, double, uint>? icon = null)
     {
-        width = Fonts.Main.Measure(14, text) + 30;
+        width = ButtonWidth(text, icon != null);
         Item item = Chrome.Hit(ui, id, x, y, width, height);
         Canvas c = ui.Canvas()!;
         var hot = item.Hovered && enabled;
@@ -32,7 +35,15 @@ public static class Widgets
         if (!enabled && kind != ButtonKind.Primary)
             color = Palette.Faint;
 
-        Chrome.Text(c, Fonts.Main, 14, item.X + 15, item.Y + height / 2, text, color);
+        var textX = item.X + 15;
+
+        if (icon != null)
+        {
+            icon(c, item.X + 24, item.Y + height / 2, color);
+            textX += IconSpace;
+        }
+
+        Chrome.Text(c, Fonts.Main, 14, textX, item.Y + height / 2, text, color);
         return item.Clicked && enabled;
     }
 
@@ -65,21 +76,21 @@ public static class Widgets
         Chrome.BoldText(c, Fonts.Main, 28, x, y + 18, title, Palette.Text);
     }
 
-    public static bool EmptyState(Ui ui, string id, double x, double y, double width, string title, string text, string button)
+    public static bool EmptyState(Ui ui, string id, double x, double y, double width, string title, string text, string button, Action<Canvas, double, double, uint>? icon = null)
     {
-        var height = 170.0;
+        var height = 206.0;
         Item card = Chrome.Hit(ui, id, x, y, width, height);
         Canvas c = ui.Canvas()!;
-        Chrome.Box(c, card.X, card.Y, width, height, Palette.RadiusLarge, Palette.Surface, Palette.Line);
+        Chrome.Dashed(c, card.X, card.Y, width, height, Palette.RadiusLarge, Palette.LineStrong);
         var center = card.X + width / 2;
-        Chrome.BoldText(c, Fonts.Main, 18, center - Fonts.Main.Measure(18, title) / 2, card.Y + 40, title, Palette.Text);
+        Chrome.BoldText(c, Fonts.Main, 18, center - Fonts.Main.Measure(18, title) / 2, card.Y + 62, title, Palette.Text);
         var lines = Chrome.Wrap(Fonts.Main, 14.5, text, Math.Min(width - 48, 520), 3);
 
         for (var i = 0; i < lines.Count; i++)
-            Chrome.Text(c, Fonts.Main, 14.5, center - Fonts.Main.Measure(14.5, lines[i]) / 2, card.Y + 70 + i * 22, lines[i], Palette.Muted);
+            Chrome.Text(c, Fonts.Main, 14.5, center - Fonts.Main.Measure(14.5, lines[i]) / 2, card.Y + 94 + i * 22, lines[i], Palette.Muted);
 
-        var buttonWidth = Fonts.Main.Measure(14, button) + 30;
-        return Button(ui, id + "-button", x + width / 2 - buttonWidth / 2, y + height - 54, button, ButtonKind.Primary, out _);
+        var buttonWidth = ButtonWidth(button, icon != null);
+        return Button(ui, id + "-button", x + width / 2 - buttonWidth / 2, y + height - 72, button, ButtonKind.Primary, out _, true, 34, icon);
     }
 
     public static void Notice(Canvas c, double x, double y, double width, string text)

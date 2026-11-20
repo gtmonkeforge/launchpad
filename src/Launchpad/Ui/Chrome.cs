@@ -93,4 +93,29 @@ public static class Chrome
         c.DrawRRect(x, y, w, h, radius, line);
         c.DrawRRect(x + 1, y + 1, w - 2, h - 2, Math.Max(0, radius - 1), fill);
     }
+
+    public static void Dashed(Canvas c, double x, double y, double w, double h, double radius, uint color)
+    {
+        Dashes(c, x + radius, y, x + w - radius, y, color);
+        Dashes(c, x + radius, y + h, x + w - radius, y + h, color);
+        Dashes(c, x, y + radius, x, y + h - radius, color);
+        Dashes(c, x + w, y + radius, x + w, y + h - radius, color);
+        c.DrawArc(x + radius, y + radius, radius, 1, Math.PI, Math.PI * 1.5, color);
+        c.DrawArc(x + w - radius, y + radius, radius, 1, Math.PI * 1.5, Math.PI * 2, color);
+        c.DrawArc(x + w - radius, y + h - radius, radius, 1, 0, Math.PI * 0.5, color);
+        c.DrawArc(x + radius, y + h - radius, radius, 1, Math.PI * 0.5, Math.PI, color);
+    }
+
+    private static void Dashes(Canvas c, double x0, double y0, double x1, double y1, uint color)
+    {
+        var length = Math.Max(Math.Abs(x1 - x0), Math.Abs(y1 - y0));
+        var dx = x1 > x0 ? 1 : 0;
+        var dy = y1 > y0 ? 1 : 0;
+
+        for (double at = 0; at < length; at += 8)
+        {
+            var end = Math.Min(at + 4, length);
+            c.DrawLine(x0 + dx * at, y0 + dy * at, x0 + dx * end, y0 + dy * end, 1, color);
+        }
+    }
 }
