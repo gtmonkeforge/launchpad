@@ -14,6 +14,7 @@ public enum Page
     Legal,
     Software,
     Support,
+    Profile,
 }
 
 public sealed record Route(Page Page, string? Arg = null);
