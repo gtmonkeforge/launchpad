@@ -42,7 +42,7 @@ public sealed class Router(Shell shell)
         Page.Browse => new BrowseScreen(shell),
         Page.Mod => new PlaceholderScreen(shell, "Mod", "/view/" + route.Arg),
         Page.Library => new PlaceholderScreen(shell, "Library", "/library"),
-        Page.Publish => new PlaceholderScreen(shell, "Publish a mod", "/upload"),
+        Page.Publish => new PublishScreen(shell),
         Page.Admin => new PlaceholderScreen(shell, "Admin", "/admin"),
         Page.Settings => new PlaceholderScreen(shell, "Settings", "/settings"),
         Page.SignIn => new PlaceholderScreen(shell, "Sign in", "/login"),
