@@ -19,10 +19,7 @@ public sealed partial class BrowseScreen(Shell shell) : IScreen
     private long _typedAt;
     private bool _started;
 
-    public void Reload()
-    {
-        Load(1);
-    }
+    public void Reload() => Load(1);
 
     public void Draw(Ui ui, double width, double height)
     {
@@ -75,10 +72,9 @@ public sealed partial class BrowseScreen(Shell shell) : IScreen
         Canvas c = ui.Canvas()!;
         Chrome.BoldText(c, Fonts.Main, 28, title.X, title.Y + 18, _mineOnly ? "Your mods" : "Mods", Palette.Text);
 
-        var buttonWidth = 148.0;
-        Item publish = Chrome.Hit(ui, "browse-publish", width - RightGutter - buttonWidth, TopMargin - 60, buttonWidth, 36);
+        Item publish = Chrome.Hit(ui, "browse-publish", width - RightGutter - 148, TopMargin - 60, 148, 36);
         c = ui.Canvas()!;
-        c.DrawRRect(publish.X, publish.Y, buttonWidth, 36, Palette.Radius, publish.Hovered ? Palette.AccentHot : Palette.Accent);
+        c.DrawRRect(publish.X, publish.Y, 148, 36, Palette.Radius, publish.Hovered ? Palette.AccentHot : Palette.Accent);
         Icons.Plus(c, publish.X + 20, publish.Y + 18, Palette.AccentInk);
         Chrome.BoldText(c, Fonts.Main, 14.5, publish.X + 36, publish.Y + 18, "Publish a mod", Palette.AccentInk);
 

@@ -1,6 +1,5 @@
 using GoomeSharp;
 using Launchpad.Game;
-using System.Text.Json.Nodes;
 using Launchpad.Infrastructure;
 using Launchpad.Mods;
 
@@ -113,10 +112,9 @@ public sealed partial class LibraryScreen : IScreen
 
         if (updatable >= 2)
         {
-            var label2 = "Update all";
-            right -= Widgets.ButtonWidth(label2, true);
+            right -= Widgets.ButtonWidth("Update all", true);
 
-            if (Widgets.Button(ui, "library-update-all", right, 29, label2, ButtonKind.Primary, out _, _busy.Count == 0, 34, Icons.Download))
+            if (Widgets.Button(ui, "library-update-all", right, 29, "Update all", ButtonKind.Primary, out _, _busy.Count == 0, 34, Icons.Download))
                 UpdateAll();
 
             right -= 10;

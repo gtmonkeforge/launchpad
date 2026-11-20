@@ -5,12 +5,6 @@ public sealed partial class BrowseScreen
 {
     private const int PageSize = 12;
 
-    private static readonly string[] SortKeys = ["newest", "popular", "name"];
-    private static readonly string[] CapabilityKeys = ["", "auto_update", "extensions", "internet"];
-    private static readonly string[] LoaderKeys = ["", "bepinex5", "bepinex6", "melonloader"];
-    private static readonly string[] FormatKeys = ["", "dll", "zip"];
-    private static readonly string[] PriceKeys = ["", "free", "paid"];
-
     private List<JsonNode> _items = [];
     private int _total;
     private int _page = 1;
@@ -65,12 +59,19 @@ public sealed partial class BrowseScreen
     private string Filters(string query)
     {
         var parts = new List<string>();
-        Add(parts, "q", query);
-        Add(parts, "category", _category);
-        Add(parts, "capability", CapabilityKeys[_capability]);
-        Add(parts, "loader", LoaderKeys[_loader]);
-        Add(parts, "type", FormatKeys[_format]);
-        Add(parts, "price", PriceKeys[_price]);
+
+        void Add(string key, string value)
+        {
+            if (value.Length > 0)
+                parts.Add(key + "=" + Uri.EscapeDataString(value));
+        }
+
+        Add("q", query);
+        Add("category", _category);
+        Add("capability", new[] { "", "auto_update", "extensions", "internet" }[_capability]);
+        Add("loader", new[] { "", "bepinex5", "bepinex6", "melonloader" }[_loader]);
+        Add("type", new[] { "", "dll", "zip" }[_format]);
+        Add("price", new[] { "", "free", "paid" }[_price]);
 
         if (_mineOnly)
             parts.Add("mine=true");
@@ -78,16 +79,10 @@ public sealed partial class BrowseScreen
         return string.Join('&', parts);
     }
 
-    private static void Add(List<string> parts, string key, string value)
-    {
-        if (value.Length > 0)
-            parts.Add(key + "=" + Uri.EscapeDataString(value));
-    }
-
     private async Task<(List<JsonNode> Items, int Total)> FetchAsync(string query, int page)
     {
         var filters = Filters(query);
-        var sort = "sort=" + SortKeys[_sort];
+        var sort = "sort=" + new[] { "newest", "popular", "name" }[_sort];
 
         if (_installed)
             return await FetchInstalledAsync(filters + (filters.Length > 0 ? "&" : "") + sort, page);
