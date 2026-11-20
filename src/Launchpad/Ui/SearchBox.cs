@@ -24,7 +24,7 @@ public static class SearchBox
         ui.PushColor(Style.Focus, 0);
         ui.PushColor(Style.Caret, Palette.Accent);
         ui.PushColor(Style.Select, 0x55DC5C3B);
-        var result = ui.InputEx("##" + id, ref text, InputFlags.EnterReturns, hint);
+        var result = ui.InputEx("##" + id, ref text, InputFlags.EnterReturns, Chrome.Clip(Fonts.Main, 14, hint, width - 26 - reserved - 16));
         ui.Pop(7);
 
         c = ui.Canvas()!;

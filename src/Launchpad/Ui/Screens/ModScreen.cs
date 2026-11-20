@@ -44,7 +44,7 @@ public sealed partial class ModScreen : IScreen
 
     public void Draw(Ui ui, double width, double height)
     {
-        ui.ScrollBegin("mod", height);
+        ui.ScrollBegin("mod-" + _guid, height);
         ui.Pos(0, 0);
         ui.Custom("mod-origin", 1, 1, ItemFlags.NoHit, out Item origin);
         _ox = origin.X;

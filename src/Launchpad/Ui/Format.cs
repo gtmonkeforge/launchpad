@@ -29,10 +29,18 @@ public static partial class Format
         return currency.ToLowerInvariant() == "usd" ? "$" + whole.ToString("0.00", CultureInfo.InvariantCulture) : whole.ToString("0.00", CultureInfo.InvariantCulture) + " " + currency.ToUpperInvariant();
     }
 
+    public static string Ago(string? text, string fallback = "")
+    {
+        return DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var when) ? Ago(when) : fallback;
+    }
+
     public static string Ago(DateTimeOffset when)
     {
+        if (when.Year < 2000)
+            return "a while ago";
+
         var span = DateTimeOffset.UtcNow - when;
-        var seconds = span.TotalSeconds;
+        var seconds = Math.Max(0, span.TotalSeconds);
 
         if (seconds < 60)
             return "just now";

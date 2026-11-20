@@ -53,7 +53,7 @@ public sealed partial class SettingsScreen : IScreen
 
     public void Draw(Ui ui, double width, double height)
     {
-        ui.ScrollBegin("settings", height);
+        ui.ScrollBegin("settings-" + _section, height);
         ui.Pos(0, 0);
         ui.Custom("settings-origin", 1, 1, ItemFlags.NoHit, out _);
 

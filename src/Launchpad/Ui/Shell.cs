@@ -114,6 +114,8 @@ public sealed class Shell
     }
 
     private string? _pendingToast;
+    private string? _lastToast;
+    private long _lastToastAt;
 
     public void ShowPendingToast()
     {
@@ -122,6 +124,12 @@ public sealed class Shell
 
         var text = _pendingToast;
         _pendingToast = null;
+
+        if (text == _lastToast && Goome.NowMs - _lastToastAt < 3000)
+            return;
+
+        _lastToast = text;
+        _lastToastAt = Goome.NowMs;
         Window.Ui.Toast(text);
     }
 }

@@ -35,7 +35,7 @@ public sealed partial class BrowseScreen(Shell shell) : IScreen
 
         WatchSearch();
 
-        ui.ScrollBegin("browse", height);
+        ui.ScrollBegin("browse-" + _page, height);
         ui.Pos(0, 0);
         ui.Custom("browse-origin", 1, 1, ItemFlags.NoHit, out Item origin);
 
