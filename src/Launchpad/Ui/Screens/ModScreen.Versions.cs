@@ -8,7 +8,7 @@ using Ui = GoomeSharp.Ui;
 
 public sealed partial class ModScreen
 {
-    private const double FileRow = 44;
+    private const double FileRow = 57;
 
     private double DrawVersions(Ui ui, double left, double width, double y)
     {
@@ -37,14 +37,14 @@ public sealed partial class ModScreen
     {
         var files = release["downloads"] as JsonArray ?? [];
         var notes = WrapLines(Fonts.Main, 14, release.Str("notes") ?? "", width - 44, 30);
-        var height = 18 + 34 + files.Count * FileRow + (notes.Count > 0 ? 8 + notes.Count * 22 : 0) + 14;
+        var height = 18 + 34 + files.Count * FileRow + (notes.Count > 0 ? 8 + notes.Count * 22 : 0) + 8;
         Item card = Area(ui, "mod-release-" + index, left, y, width, height);
         Canvas c = ui.Canvas()!;
         Chrome.Box(c, card.X, card.Y, width, height, Palette.RadiusLarge, Palette.Surface, Palette.Line);
 
         var x = card.X + 22;
         var center = card.Y + 18 + 17;
-        x += Chrome.BoldText(c, Fonts.Main, 16, x, center, "v" + release.Str("version"), Palette.Text) + 10;
+        x += Chrome.BoldText(c, Fonts.Mono, 15, x, center, "v" + release.Str("version"), Palette.Text) + 10;
 
         if (release.Str("version") == _mod.Str("current_version"))
             x += Pill(c, x, center, "Latest", Palette.Good) + 6;
@@ -53,7 +53,7 @@ public sealed partial class ModScreen
             x += Pill(c, x, center, LoaderLabel(loader?.GetValue<string>()), Palette.Muted) + 6;
 
         var date = DateText(release.Str("released_at"));
-        Chrome.Text(c, Fonts.Main, 13, card.X + width - 22 - Fonts.Main.Measure(13, date), center, date, Palette.Faint);
+        Chrome.Text(c, Fonts.Mono, 12.5, card.X + width - 22 - Fonts.Mono.Measure(12.5, date), center, date, Palette.Faint);
 
         var fileTop = card.Y + 18 + 34;
 
@@ -68,13 +68,13 @@ public sealed partial class ModScreen
 
     private static void DrawFile(Canvas c, JsonNode file, double x, double y, double width)
     {
-        Chrome.Box(c, x, y, width, FileRow - 6, 8, Palette.Surface2, Palette.Line);
+        Chrome.Box(c, x, y, width, FileRow - 7, 8, Palette.Surface2, Palette.Line);
         var kind = (file.Str("kind") ?? "").ToUpperInvariant();
-        var kindWidth = Fonts.Mono.Measure(12, kind) + 14;
-        Chrome.Box(c, x + 10, y + 8, kindWidth, 22, 6, Palette.Surface, Palette.LineStrong);
-        Chrome.Text(c, Fonts.Mono, 12, x + 17, y + 19, kind, Palette.Muted);
-        var name = Chrome.Clip(Fonts.Main, 14, file.Str("filename") ?? "", width - kindWidth - 150);
-        var after = x + 22 + kindWidth + Chrome.Text(c, Fonts.Main, 14, x + 22 + kindWidth, y + 19, name, Palette.Text) + 10;
-        Chrome.Text(c, Fonts.Main, 12.5, after, y + 19, LoaderLabel(file.Str("loader")) + " · " + Size(file.Long("size")), Palette.Faint);
+        c.DrawRRect(x + 10, y + 8, 34, 34, 7, Palette.Bg);
+        Chrome.BoldText(c, Fonts.Mono, 11.5, x + 27 - Fonts.Mono.Measure(11.5, kind) / 2, y + 25, kind, Palette.Muted);
+        var name = Chrome.Clip(Fonts.Main, 14, file.Str("filename") ?? "", width - 110);
+        Chrome.Text(c, Fonts.Main, 14, x + 56, y + 18, name, Palette.Text);
+        Chrome.Text(c, Fonts.Mono, 12, x + 56, y + 36, LoaderLabel(file.Str("loader")) + " · " + Size(file.Long("size")), Palette.Faint);
+        Icons.Download(c, x + width - 22, y + 25, Palette.Muted);
     }
 }

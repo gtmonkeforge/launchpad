@@ -44,6 +44,7 @@ public sealed partial class ModScreen : IScreen
         ui.Custom("mod-origin", 1, 1, ItemFlags.NoHit, out Item origin);
         _ox = origin.X;
         _oy = origin.Y;
+        DrawBackdrop(ui, width);
 
         var contentWidth = Math.Max(640, width - SideMargin - RightGutter);
         var bottom = DrawBackLink(ui, 22);
@@ -104,8 +105,9 @@ public sealed partial class ModScreen : IScreen
         if (Status != "approved")
             y = DrawNotice(ui, width, y) + 12;
 
-        y = DrawHero(ui, width, y) + 12;
-        y = DrawStats(ui, width, y) + Gap;
+        y = DrawBanner(ui, width, y);
+        y = DrawHero(ui, width, y) + 16;
+        y = DrawStats(ui, width, y) + 26;
 
         var sideWidth = width >= 940 ? 330.0 : 290.0;
         var mainWidth = width - sideWidth - Gap;
@@ -113,6 +115,31 @@ public sealed partial class ModScreen : IScreen
         var sideBottom = DrawSidebar(ui, SideMargin + mainWidth + Gap, sideWidth, y);
         return Math.Max(mainBottom, sideBottom);
     }
+
+    private double DrawBanner(Ui ui, double width, double y)
+    {
+        Bitmap? banner = _shell.Images.Get(_mod.Str("banner"));
+
+        if (banner == null)
+            return y;
+
+        if (!ReferenceEquals(banner, _bannerSource) || Math.Abs(width - _bannerWidth) > 1)
+        {
+            _bannerSource = banner;
+            _bannerWidth = width;
+            _bannerCrop = Backdrop.Cover(banner, width / 220);
+        }
+
+        Item area = Area(ui, "mod-banner", SideMargin, y, width, 220);
+        Canvas c = ui.Canvas()!;
+        Chrome.Box(c, area.X, area.Y, width, 220, Palette.RadiusLarge, Palette.Surface, Palette.Line);
+        c.DrawBitmap(_bannerCrop!, area.X + 1, area.Y + 1, width - 2, 218, Palette.RadiusLarge - 1);
+        return y + 232;
+    }
+
+    private Bitmap? _bannerCrop;
+    private Bitmap? _bannerSource;
+    private double _bannerWidth;
 
     private double DrawNotice(Ui ui, double width, double y)
     {
@@ -133,29 +160,47 @@ public sealed partial class ModScreen : IScreen
         var cells = new (string Label, string Value)[]
         {
             ("Downloads", Format.Number(_mod.Long("downloads"))),
+            ("Rating", _rating),
             ("Version", _mod.Str("current_version") is { Length: > 0 } version ? version : "-"),
             ("Updated", updated),
             ("Loaders", loaders.ToString()),
         };
 
-        Item strip = Area(ui, "mod-stats", SideMargin, y, width, 66);
+        Item strip = Area(ui, "mod-stats", SideMargin, y, width, 46);
         Canvas c = ui.Canvas()!;
-        Chrome.Box(c, strip.X, strip.Y, width, 66, Palette.RadiusLarge, Palette.Surface, Palette.Line);
-        var cell = width / cells.Length;
+        c.DrawRect(strip.X, strip.Y, width, 1, Palette.Line);
+        c.DrawRect(strip.X, strip.Y + 45, width, 1, Palette.Line);
+        var x = strip.X;
 
-        for (var i = 0; i < cells.Length; i++)
+        foreach (var (label, value) in cells)
         {
-            var left = strip.X + i * cell + 22;
-
-            if (i > 0)
-                c.DrawRect(strip.X + i * cell, strip.Y + 14, 1, 38, Palette.Line);
-
-            Chrome.Text(c, Fonts.Main, 12.5, left, strip.Y + 22, cells[i].Label, Palette.Faint);
-            Chrome.BoldText(c, Fonts.Main, 17, left, strip.Y + 44, cells[i].Value, Palette.Text);
+            x += Chrome.Text(c, Fonts.Main, 13, x, strip.Y + 23, label, Palette.Muted) + 8;
+            x += Chrome.Text(c, Fonts.Mono, 14, x, strip.Y + 23, value, Palette.Text) + 28;
         }
 
-        return y + 66;
+        return y + 46;
     }
+
+    private void DrawBackdrop(Ui ui, double width)
+    {
+        Bitmap? picture = _shell.Images.Get(_mod.Str("banner")) ?? _shell.Images.Get(_mod.Str("logo"));
+
+        if (picture == null)
+            return;
+
+        if (!ReferenceEquals(picture, _backdropSource))
+        {
+            _backdropSource = picture;
+            _backdrop = Backdrop.Blurred(picture);
+        }
+
+        Canvas c = ui.Canvas()!;
+        c.DrawBitmap(_backdrop!, _ox, _oy, width, 460, 0, 0x38FFFFFF);
+        c.DrawRRectGrad(_ox, _oy + 220, width, 240, 0, 0x00111214, Palette.Bg);
+    }
+
+    private Bitmap? _backdrop;
+    private Bitmap? _backdropSource;
 
     private static DateTimeOffset ParseDate(string? text) =>
         DateTimeOffset.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out var when) ? when : DateTimeOffset.UtcNow;

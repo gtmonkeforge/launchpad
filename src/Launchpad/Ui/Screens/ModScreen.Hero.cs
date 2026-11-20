@@ -1,7 +1,6 @@
 using System.Text.Json.Nodes;
 using GoomeSharp;
 using Launchpad.Infrastructure;
-using Launchpad.Mods;
 
 namespace Launchpad.Ui.Screens;
 
@@ -10,98 +9,25 @@ using Ui = GoomeSharp.Ui;
 public sealed partial class ModScreen
 {
     private const double HeroPad = 22;
-    private const double ActionWidth = 224;
-
-    private string[] ReleaseLoaders()
-    {
-        var list = (Current?["loaders"] as JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToArray();
-        return list is { Length: > 0 } ? list : ["bepinex5"];
-    }
-
-    private (string Label, bool Enabled, Action? Click) Primary()
-    {
-        var loader = _shell.App.Settings.Loader;
-        var version = Current.Str("version");
-
-        if (Current == null)
-            return ("No releases yet", false, null);
-
-        if (Locked)
-        {
-            var price = _mod.Long("price_cents") > 0 ? "Buy · " + Format.Money(_mod.Long("price_cents"), _mod.Str("currency") ?? "usd") : "See tiers";
-            return (price, true, () => _shell.OpenForge("/view/" + Uri.EscapeDataString(_guid)));
-        }
-
-        if (_working)
-            return ("Working…", false, null);
-
-        if (!GameValid)
-            return ("Choose your game folder", true, () => _shell.Router.Push(new Route(Page.Settings)));
-
-        if (_record != null)
-        {
-            if (_record.Loader != loader.Id())
-                return ("Installed for " + LoaderLabel(_record.Loader), false, null);
-
-            if (_record.Version != version)
-                return ("Update to v" + version, true, Install);
-
-            return ("Installed · v" + _record.Version, false, null);
-        }
-
-        if (!ReleaseLoaders().Contains(loader.Id()))
-            return ("Install", false, null);
-
-        return (_mod.Bool("uses_injector") ? "Install with injector" : "Install", true, Install);
-    }
-
-    private List<(string Text, uint Color)> Notes()
-    {
-        var notes = new List<(string, uint)>();
-        var loader = _shell.App.Settings.Loader;
-
-        if (_working && _shell.Progress != null)
-            notes.Add((_shell.Progress, Palette.Muted));
-
-        if (_result != null)
-            notes.Add((_result, Palette.Good));
-
-        if (_failure != null)
-            notes.Add((_failure, Palette.Bad));
-
-        if (Locked)
-            notes.Add(("Buy this mod on monkeforge.org, then install it here. Buy once to install every future update.", Palette.Muted));
-        else if (!GameValid)
-            notes.Add(("Launchpad needs to know where Gorilla Tag is installed.", Palette.Muted));
-        else if (_record != null && _record.Loader != loader.Id())
-            notes.Add(($"Installed for {LoaderLabel(_record.Loader)}. Switch back in Launchpad settings to use it.", Palette.Muted));
-        else if (_record == null && !ReleaseLoaders().Contains(loader.Id()))
-            notes.Add(($"Not available for {loader.DisplayName()}. It supports {string.Join(", ", ReleaseLoaders().Select(LoaderLabel))}.", Palette.Muted));
-
-        if (_mod.Bool("uses_injector") && GameValid && !Locked)
-            notes.Add(("Delivered encrypted and loaded into the game from memory each time Gorilla Tag starts while Launchpad is open.", Palette.Muted));
-
-        return notes;
-    }
+    private const double IconSize = 88;
 
     private double DrawHero(Ui ui, double width, double y)
     {
         var badges = (_mod!["badges"] as JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToArray() ?? [];
-        var height = badges.Length > 0 ? 146.0 : 122.0;
-        Item card = Area(ui, "mod-hero", SideMargin, y, width, height);
+        var height = badges.Length > 0 ? 118.0 : 92.0;
+        Item area = Area(ui, "mod-hero", SideMargin, y, width, height);
         Canvas c = ui.Canvas()!;
-        Chrome.Box(c, card.X, card.Y, width, height, Palette.RadiusLarge, Palette.Surface, Palette.Line);
-        DrawIcon(c, card.X + HeroPad, card.Y + HeroPad);
+        DrawIcon(c, area.X, area.Y);
 
-        var textLeft = card.X + HeroPad + 86 + 20;
-        var textWidth = width - (textLeft - card.X) - ActionWidth - HeroPad - 16;
-        Chrome.BoldText(c, Fonts.Main, 26, textLeft, card.Y + 38, Chrome.Clip(Fonts.Main, 26, _mod.Str("name") ?? "", textWidth), Palette.Text);
-        DrawMeta(c, textLeft, card.Y + 74, textWidth);
+        var textLeft = area.X + IconSize + 20;
+        var textWidth = width - IconSize - 20 - ActionWidth - 20;
+        Chrome.BoldText(c, Fonts.Main, 28, textLeft, area.Y + 18, Chrome.Clip(Fonts.Main, 28, _mod.Str("name") ?? "", textWidth), Palette.Text);
+        DrawMeta(c, textLeft, area.Y + 56, textWidth);
 
         if (badges.Length > 0)
-            DrawBadgeRow(c, badges, textLeft, card.Y + 94);
+            DrawBadgeRow(c, badges, textLeft, area.Y + 76);
 
-        DrawActions(ui, SideMargin + width - HeroPad - ActionWidth, y + HeroPad);
+        DrawActions(ui, SideMargin + width - ActionWidth, y);
         return y + height;
     }
 
@@ -111,20 +37,32 @@ public sealed partial class ModScreen
 
         if (logo != null)
         {
-            c.DrawBitmap(logo, x, y, 86, 86, 16);
+            c.DrawBitmap(logo, x, y, IconSize, IconSize, 18);
             return;
         }
 
-        Chrome.Box(c, x, y, 86, 86, 16, Palette.Surface2, Palette.Line);
+        Chrome.Box(c, x, y, IconSize, IconSize, 18, Palette.Surface2, Palette.Line);
         var letters = Format.Initials(_mod.Str("name"));
-        Chrome.BoldText(c, Fonts.Main, 28, x + 43 - Fonts.Main.Measure(28, letters) / 2, y + 43, letters, Palette.Muted);
+        Chrome.BoldText(c, Fonts.Main, 28, x + IconSize / 2 - Fonts.Main.Measure(28, letters) / 2, y + IconSize / 2, letters, Palette.Muted);
     }
 
     private void DrawMeta(Canvas c, double x, double centerY, double maxWidth)
     {
         JsonNode? author = _mod!["author"];
         var right = x + maxWidth;
-        x += Chrome.Text(c, Fonts.Main, 14, x, centerY, "by " + author.Str("name"), Palette.Muted) + 10;
+        var name = author.Str("name") ?? "";
+        Bitmap? avatar = _shell.Images.Get(author.Str("avatar"));
+
+        if (avatar != null)
+            c.DrawBitmap(avatar, x, centerY - 11, 22, 22, 11);
+        else
+        {
+            c.DrawCircle(x + 11, centerY, 11, Palette.Surface2);
+            var letters = Format.Initials(name);
+            Chrome.Text(c, Fonts.Main, 10, x + 11 - Fonts.Main.Measure(10, letters) / 2, centerY, letters, Palette.Muted);
+        }
+
+        x += 29 + Chrome.Text(c, Fonts.Main, 15, x + 29, centerY, name, Palette.Text) + 10;
 
         if (author.Bool("is_admin"))
         {
@@ -172,36 +110,5 @@ public sealed partial class ModScreen
             Chrome.Text(c, Fonts.Main, 13, x + 24, top + 11.5, badge, 0xFFE8C886);
             x += chip + 6;
         }
-    }
-
-    private void DrawActions(Ui ui, double x, double y)
-    {
-        var (label, enabled, click) = Primary();
-
-        if (Button(ui, "mod-primary", label, x, y, ActionWidth, 46, ButtonStyle.Primary, enabled))
-            click?.Invoke();
-
-        var second = y + 56;
-        var source = _mod.Str("source_url");
-        var showRemove = _record != null && !Locked && _record.Loader == _shell.App.Settings.Loader.Id();
-        var buttonWidth = showRemove && source != null ? ActionWidth / 2 - 4 : ActionWidth;
-
-        if (showRemove)
-        {
-            var text = _confirmRemove ? "Click again to remove" : "Remove";
-
-            if (Button(ui, "mod-remove", text, x, second, buttonWidth, 34, ButtonStyle.Danger, !_working))
-            {
-                if (_confirmRemove)
-                    Remove();
-                else
-                    _confirmRemove = true;
-            }
-
-            x += buttonWidth + 8;
-        }
-
-        if (source != null && Button(ui, "mod-source", "Source", x, second, buttonWidth, 34, ButtonStyle.Plain))
-            _shell.Call("shell.open", new JsonObject { ["url"] = source });
     }
 }

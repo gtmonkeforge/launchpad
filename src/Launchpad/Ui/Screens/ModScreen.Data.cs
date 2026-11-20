@@ -52,6 +52,7 @@ public sealed partial class ModScreen
                 _mod = mod;
                 _layout = null;
                 _shot = 0;
+                LoadExtras(mod.Str("guid") ?? _guid);
             }
             catch (UserFacingException ex)
             {
