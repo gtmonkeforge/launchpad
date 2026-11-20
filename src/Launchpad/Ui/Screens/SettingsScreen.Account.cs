@@ -19,8 +19,8 @@ public sealed partial class SettingsScreen
 
         Card profile = Card.Open(ui, "account-profile", left, y, width, 96, "");
         profile.Avatar(shell.Images.Get(user.Str("avatar")), 22, 24, 48, name);
-        profile.Bold(84, 36, 16, name, Palette.Text);
-        profile.Text(84, 60, 13, details, Palette.Muted, true);
+        profile.Bold(84, 36, 16, Chrome.Clip(Fonts.Main, 16, name, width - 84 - 150), Palette.Text);
+        profile.Text(84, 60, 13, Chrome.Clip(Fonts.Mono, 13, details, width - 84 - 150), Palette.Muted, true);
 
         if (user.Str("profile_url") is { Length: > 0 } url && Card.Button(ui, "View profile", left + width - 142, y + 30, 120))
             shell.OpenForge(url);
