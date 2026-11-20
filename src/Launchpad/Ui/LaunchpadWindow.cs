@@ -87,6 +87,12 @@ public sealed class LaunchpadWindow
         if (_window.Goome.State != WindowState.Normal)
             return;
 
+        Canvas c = ui.Canvas()!;
+        c.DrawRect(0, 0, width, 1, Palette.Line);
+        c.DrawRect(0, height - 1, width, 1, Palette.Line);
+        c.DrawRect(0, 0, 1, height, Palette.Line);
+        c.DrawRect(width - 1, 0, 1, height, Palette.Line);
+
         Edge(ui, "edge-left", 0, 0, EdgeSize, height, Edges.Left, CursorShape.ResizeEW);
         Edge(ui, "edge-right", width - EdgeSize, 0, EdgeSize, height, Edges.Right, CursorShape.ResizeEW);
         Edge(ui, "edge-top", 0, 0, width, EdgeSize, Edges.Top, CursorShape.ResizeNS);
