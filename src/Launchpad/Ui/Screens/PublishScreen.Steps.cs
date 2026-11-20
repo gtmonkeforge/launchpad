@@ -182,7 +182,7 @@ public sealed partial class PublishScreen
         Canvas c = ui.Canvas()!;
 
         if (primary)
-            c.DrawRRect(item.X, item.Y, width, 36, Palette.Radius, item.Hovered ? 0xFFE46A49 : Palette.Accent);
+            c.DrawRRect(item.X, item.Y, width, 36, Palette.Radius, item.Hovered ? Palette.AccentHot : Palette.Accent);
         else
             Chrome.Box(c, item.X, item.Y, width, 36, Palette.Radius, item.Hovered ? Palette.Hover : Palette.Surface2, Palette.LineStrong);
 

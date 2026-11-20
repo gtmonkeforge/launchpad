@@ -232,7 +232,7 @@ public sealed class Titlebar(Shell shell)
     {
         Item item = Chrome.Hit(ui, "sign-in", x, 11, SignInWidth, 30);
         Canvas c = ui.Canvas()!;
-        c.DrawRRect(item.X, item.Y, SignInWidth, 30, 8, item.Hovered ? 0xFFE46A49 : Palette.Accent);
+        c.DrawRRect(item.X, item.Y, SignInWidth, 30, 8, item.Hovered ? Palette.AccentHot : Palette.Accent);
         Chrome.BoldText(c, Fonts.Main, 13, item.X + SignInWidth / 2 - Fonts.Main.Measure(13, "Sign in") / 2, item.Y + 15, "Sign in", Palette.AccentInk);
 
         if (item.Clicked)

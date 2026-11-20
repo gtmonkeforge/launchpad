@@ -81,7 +81,7 @@ public sealed partial class BrowseScreen(Shell shell) : IScreen
         var buttonWidth = 148.0;
         Item publish = Chrome.Hit(ui, "browse-publish", width - RightGutter - buttonWidth, TopMargin - 60, buttonWidth, 36);
         c = ui.Canvas()!;
-        c.DrawRRect(publish.X, publish.Y, buttonWidth, 36, Palette.Radius, publish.Hovered ? 0xFFE46A49 : Palette.Accent);
+        c.DrawRRect(publish.X, publish.Y, buttonWidth, 36, Palette.Radius, publish.Hovered ? Palette.AccentHot : Palette.Accent);
         Icons.Plus(c, publish.X + 20, publish.Y + 18, Palette.AccentInk);
         Chrome.BoldText(c, Fonts.Main, 14.5, publish.X + 36, publish.Y + 18, "Publish a mod", Palette.AccentInk);
 

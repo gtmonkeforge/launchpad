@@ -220,8 +220,8 @@ public static partial class Markdown
             {
                 Item hit = Chrome.Hit(ui, idPrefix + i, left + word.X, top + word.CenterY - 11, word.Width, 22);
                 c = ui.Canvas()!;
-                Chrome.Text(c, word.Font, word.Size, hit.X, hit.Y + 11, word.Text, hit.Hovered ? 0xFFE46A49 : word.Color);
-                c.DrawRect(hit.X, hit.Y + 11 + word.Size * 0.6, word.Width, 1, hit.Hovered ? 0xFFE46A49 : word.Color);
+                Chrome.Text(c, word.Font, word.Size, hit.X, hit.Y + 11, word.Text, hit.Hovered ? Palette.AccentHot : word.Color);
+                c.DrawRect(hit.X, hit.Y + 11 + word.Size * 0.6, word.Width, 1, hit.Hovered ? Palette.AccentHot : word.Color);
 
                 if (hit.Clicked)
                     openUrl(word.Url);
