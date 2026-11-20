@@ -44,46 +44,37 @@ public static partial class Format
         if (when.Year < 2000)
             return "a while ago";
 
-        var span = DateTimeOffset.UtcNow - when;
-        var seconds = Math.Max(0, span.TotalSeconds);
+        var secs = Math.Max(0, (DateTimeOffset.UtcNow - when).TotalSeconds);
 
-        if (seconds < 60)
-            return "just now";
+        foreach (var (len, unit) in new[] { (31536000, "year"), (2592000, "month"), (86400, "day"), (3600, "hour"), (60, "minute") })
+        {
+            if (secs < len)
+                continue;
 
-        if (seconds < 3600)
-            return Plural((int)(seconds / 60), "minute");
+            var n = (int)(secs / len);
+            return n == 1 ? $"1 {unit} ago" : $"{n} {unit}s ago";
+        }
 
-        if (seconds < 86400)
-            return Plural((int)(seconds / 3600), "hour");
-
-        if (seconds < 86400 * 30)
-            return Plural((int)(seconds / 86400), "day");
-
-        if (seconds < 86400 * 365)
-            return Plural((int)(seconds / (86400 * 30)), "month");
-
-        return Plural((int)(seconds / (86400 * 365)), "year");
+        return "just now";
     }
-
-    private static string Plural(int amount, string unit) => amount == 1 ? $"1 {unit} ago" : $"{amount} {unit}s ago";
 
     public static string PlainText(string? markdown)
     {
-        var text = Fence().Replace(markdown ?? "", " ");
-        text = Marks().Replace(text, "");
-        text = Parens().Replace(text, "");
-        return Spaces().Replace(text, " ").Trim();
+        var text = CodeFence().Replace(markdown ?? "", " ");
+        text = MarkChars().Replace(text, "");
+        text = ParenText().Replace(text, "");
+        return Whitespace().Replace(text, " ").Trim();
     }
 
     [GeneratedRegex("```[\\s\\S]*?```")]
-    private static partial Regex Fence();
+    private static partial Regex CodeFence();
 
     [GeneratedRegex("[#*`>_~\\[\\]]")]
-    private static partial Regex Marks();
+    private static partial Regex MarkChars();
 
     [GeneratedRegex("\\([^)]*\\)")]
-    private static partial Regex Parens();
+    private static partial Regex ParenText();
 
     [GeneratedRegex("\\s+")]
-    private static partial Regex Spaces();
+    private static partial Regex Whitespace();
 }
