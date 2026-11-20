@@ -23,10 +23,7 @@ public sealed partial class SupportScreen : IScreen
         _arg = arg;
     }
 
-    public void Reload()
-    {
-        _started = false;
-    }
+    public void Reload() => _started = false;
 
     public void Draw(Ui ui, double width, double height)
     {
@@ -37,6 +34,32 @@ public sealed partial class SupportScreen : IScreen
         PageFrame.End(ui, _shell, "support", bottom, height, width);
     }
 
+    private double DrawHelp(Ui ui, double left, double width)
+    {
+        const string helpText = "The docs cover installing mods, publishing, payouts and the game loader. Still stuck? Ask in the community channel where you found MonkeForge, or email the address on the website.";
+        const string donateText = "MonkeForge is community made and runs on donations. If it saved you time, you can chip in on the website. Donating never buys anything.";
+        PageFrame.Title(ui, "support-title", left, 28, "Support", "Get help, or help keep MonkeForge running.");
+        var helpHeight = 118 + Card.HintHeight(helpText, width);
+        Card help = Card.Open(ui, "support-help", left, 108, width, helpHeight, "Need a hand?");
+        help.Hint(0, 46, width, helpText);
+
+        if (Widgets.Button(ui, "support-docs", left + Card.Padding, 108 + helpHeight - 54, "Read the docs", ButtonKind.Primary, out var docsWidth, true, 36))
+            _shell.Router.Push(new Route(Page.Docs));
+
+        if (Widgets.Button(ui, "support-software", left + Card.Padding + docsWidth + 10, 108 + helpHeight - 54, "Get the apps", ButtonKind.Subtle, out _, true, 36))
+            _shell.Router.Push(new Route(Page.Software));
+
+        var donateTop = 108 + helpHeight + 16;
+        var donateHeight = 118 + Card.HintHeight(donateText, width);
+        Card donate = Card.Open(ui, "support-donate", left, donateTop, width, donateHeight, "Support MonkeForge");
+        donate.Hint(0, 46, width, donateText);
+
+        if (Widgets.Button(ui, "support-donate-button", left + Card.Padding, donateTop + donateHeight - 54, "Donate on monkeforge.org", ButtonKind.Primary, out _, true, 36))
+            _shell.OpenForge("/");
+
+        return donateTop + donateHeight;
+    }
+
     private double DrawView(Ui ui, double left, double width)
     {
         if (!_shell.IsAdmin)
@@ -45,10 +68,7 @@ public sealed partial class SupportScreen : IScreen
         if (_arg == "new")
             return DrawCompose(ui, left, width);
 
-        if (_arg != null && long.TryParse(_arg, out var id))
-            return DrawThread(ui, left, width, id);
-
-        return DrawList(ui, left, width);
+        return long.TryParse(_arg, out var id) ? DrawThread(ui, left, width, id) : DrawList(ui, left, width);
     }
 
     private void Fetch(string path)
