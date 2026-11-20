@@ -10,6 +10,7 @@ public sealed partial class ModScreen
     private const double ThumbHeight = 54;
 
     private int _shot;
+    private double _stageWidth = 800;
 
     private double DrawGallery(Ui ui, double left, double width, double y, string[] shots)
     {
@@ -25,6 +26,11 @@ public sealed partial class ModScreen
         c.DrawRect(card.X + 1, card.Y + 1, width - 2, stage, Palette.Bg);
         DrawFitted(c, _shell.Images.Get(shots[_shot]), card.X + 1, card.Y + 1, width - 2, stage);
         c.ClipPop();
+        _stageWidth = width;
+        Item stageHit = Chrome.Hit(ui, "mod-stage", left + 1, y + 1, width - 2, stage);
+
+        if (stageHit.Clicked)
+            _lightbox = true;
 
         if (multiple)
         {

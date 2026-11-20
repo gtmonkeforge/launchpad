@@ -61,6 +61,7 @@ public sealed partial class ModScreen : IScreen
 
         _shell.Footer.Finish(ui, "mod-end", bottom, height, width);
         ui.ScrollEnd();
+        DrawDialogs(ui);
     }
 
     private double DrawBackLink(Ui ui, double y)
