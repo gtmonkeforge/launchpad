@@ -86,17 +86,19 @@ public sealed partial class PublishScreen
         {
             _error = ex.Message;
         }
-        catch (IOException ex)
-        {
-            _error = ex.Message;
-        }
         catch (JsonException)
         {
             _error = "MonkeForge sent a response Launchpad couldn't read.";
         }
-
-        _busy = false;
-        shell.Invalidate();
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            shell.Invalidate();
+        }
     }
 
     private async Task SaveSlug(string guid)
