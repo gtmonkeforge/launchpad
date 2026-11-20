@@ -10,6 +10,10 @@ public enum Page
     Settings,
     Game,
     SignIn,
+    Docs,
+    Legal,
+    Software,
+    Support,
 }
 
 public sealed record Route(Page Page, string? Arg = null);

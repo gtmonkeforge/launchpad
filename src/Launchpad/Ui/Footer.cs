@@ -20,15 +20,15 @@ public sealed class Footer(Shell shell)
         "Evan Burger's homepage",
     ];
 
-    private static readonly (string Name, string Path)[] Links =
+    private static readonly (string Name, Route Target)[] Links =
     [
-        ("Launchpad", "/software/launchpad"),
-        ("CLI", "/software/cli"),
-        ("OpenForge", "/software/openforge"),
-        ("Docs", "/docs"),
-        ("Terms", "/terms"),
-        ("Privacy", "/privacy"),
-        ("Support MonkeForge", "/"),
+        ("Launchpad", new Route(Page.Software, "launchpad")),
+        ("CLI", new Route(Page.Software, "cli")),
+        ("OpenForge", new Route(Page.Software, "openforge")),
+        ("Docs", new Route(Page.Docs)),
+        ("Terms", new Route(Page.Legal, "terms")),
+        ("Privacy", new Route(Page.Legal, "privacy")),
+        ("Support MonkeForge", new Route(Page.Support)),
     ];
 
     private readonly string _quip = Quips[Random.Shared.Next(Quips.Length)];
@@ -57,7 +57,7 @@ public sealed class Footer(Shell shell)
         {
             var linkWidth = Fonts.Main.Measure(12.5, Links[i].Name);
             right -= linkWidth;
-            Link(ui, Links[i].Name, Links[i].Path, right, top, linkWidth);
+            Link(ui, Links[i].Name, Links[i].Target, right, top, linkWidth);
             right -= 18;
         }
 
@@ -70,13 +70,13 @@ public sealed class Footer(Shell shell)
             Chip(c, x, second, "v" + _forge);
     }
 
-    private void Link(Ui ui, string name, string path, double x, double centerY, double width)
+    private void Link(Ui ui, string name, Route target, double x, double centerY, double width)
     {
         Item item = Chrome.Hit(ui, "footer-" + name, x - 2, centerY - 11, width + 4, 22);
         Chrome.Text(ui.Canvas()!, Fonts.Main, 12.5, x, centerY, name, item.Hovered ? Palette.Text : Palette.Muted);
 
         if (item.Clicked)
-            shell.OpenForge(path);
+            shell.Router.Push(target);
     }
 
     private static void Chip(Canvas c, double x, double centerY, string text)
