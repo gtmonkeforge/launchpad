@@ -101,7 +101,7 @@ public sealed partial class ShieldScreen : IScreen
             y = DrawToolbar(ui, SideMargin, contentWidth, y) + 14;
             y = _assemblies ? DrawAssemblies(ui, SideMargin, contentWidth, y) : DrawChecks(ui, SideMargin, contentWidth, y);
             Item hint = Area(ui, "shield-hint", SideMargin, y + 4, contentWidth, 24);
-            Chrome.Text(ui.Canvas()!, Fonts.Main, 13, hint.X, hint.Y + 12, "Static analysis is not a guarantee of safety. Reports reflect the latest release in this channel.", Palette.Faint);
+            Chrome.Text(ui.Canvas()!, Fonts.Main, 13, hint.X, hint.Y + 12, ShieldHint, Palette.Faint);
             y += 28;
         }
 
@@ -159,18 +159,14 @@ public sealed partial class ShieldScreen : IScreen
 
     private double DrawSummary(Ui ui, double left, double width, double y)
     {
+        var (measured, risk, eligible, verdict, color) = ShieldState(_report);
         var complete = _report.Str("status") == "complete";
         var total = _report.Long("total_checks");
         var failed = _report.Long("failed_checks");
-        var measured = complete && total > 0;
-        var risk = measured ? failed * 100.0 / total : 0;
-        var eligible = _report.Bool("eligible");
-        var verdict = complete ? (eligible ? "Passed" : "Review required") : StatusLabel(_report.Str("status"));
         var heading = complete ? (eligible ? "Meets the automatic approval policy" : "This release needs a manual review") : "Analysis is incomplete or still running";
         var textLeft = 190.0;
         var textWidth = width - textLeft - 24;
-        var diagnostics = (_report?["diagnostics"] as JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToList() ?? [];
-        var diagLines = diagnostics.Select(text => Chrome.Wrap(Fonts.Main, 13.5, text, textWidth - 28, 3)).ToList();
+        var diagLines = Diagnostics(_report).Select(text => Chrome.Wrap(Fonts.Main, 13.5, text, textWidth - 28, 3)).ToList();
         var hint = Chrome.Wrap(Fonts.Main, 13.5, "Inconclusive checks count as passing. Unevaluated checks require review." + (complete ? "" : " Refresh to check for results."), textWidth, 3);
         var height = Math.Max(220, 24 + 30 + 3 * 28 + 6 + diagLines.Sum(lines => lines.Count * 21 + 22) + hint.Count * 21 + 24);
 
@@ -178,8 +174,7 @@ public sealed partial class ShieldScreen : IScreen
         Canvas c = ui.Canvas()!;
         Chrome.Box(c, card.X, card.Y, width, height, Palette.RadiusLarge, Palette.Surface, Palette.Line);
         DrawRing(c, card.X + 90, card.Y + 92, measured, risk, eligible);
-        var pillWidth = Fonts.Main.Measure(12.5, verdict) + 18;
-        Widgets.Pill(c, card.X + 90 - pillWidth / 2, card.Y + 166, verdict, eligible && measured ? Palette.Good : measured ? Palette.Bad : Palette.Muted);
+        Widgets.Pill(c, card.X + 90 - (Fonts.Main.Measure(12.5, verdict) + 18) / 2, card.Y + 166, verdict, color);
 
         var x = card.X + textLeft;
         var top = card.Y + 24;
@@ -203,16 +198,7 @@ public sealed partial class ShieldScreen : IScreen
 
         top += 6;
 
-        for (var i = 0; i < diagnostics.Count; i++)
-        {
-            var boxHeight = diagLines[i].Count * 21 + 14;
-            Chrome.Box(c, x, top, textWidth, boxHeight, Palette.Radius, 0x14E5B85C, 0x5CE5B85C);
-
-            for (var line = 0; line < diagLines[i].Count; line++)
-                Chrome.Text(c, Fonts.Main, 13.5, x + 14, top + 17 + line * 21, diagLines[i][line], Palette.Warn);
-
-            top += boxHeight + 8;
-        }
+        top = DrawDiagnostics(c, x, top, textWidth, diagLines);
 
         for (var i = 0; i < hint.Count; i++)
             Chrome.Text(c, Fonts.Main, 13.5, x, top + 14 + i * 21, hint[i], Palette.Faint);

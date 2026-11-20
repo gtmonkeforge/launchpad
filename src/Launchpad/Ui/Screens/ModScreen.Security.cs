@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json.Nodes;
 using GoomeSharp;
 using Launchpad.Infrastructure;
@@ -21,7 +20,7 @@ public sealed partial class ModScreen
 
         y = DrawSecuritySummary(ui, left, width, y);
         Item hint = Area(ui, "mod-security-hint", left, y + 14, width, 24);
-        Chrome.Text(ui.Canvas()!, Fonts.Main, 13, hint.X, hint.Y + 12, "Static analysis is not a guarantee of safety. Reports reflect the latest release in this channel.", Palette.Faint);
+        Chrome.Text(ui.Canvas()!, Fonts.Main, 13, hint.X, hint.Y + 12, ShieldHint, Palette.Faint);
         return y + 42;
     }
 
@@ -43,25 +42,19 @@ public sealed partial class ModScreen
 
     private double DrawSecuritySummary(Ui ui, double left, double width, double y)
     {
-        var complete = _report.Str("status") == "complete";
+        var (measured, risk, eligible, verdict, color) = ShieldState(_report);
         var total = _report.Long("total_checks");
         var failed = _report.Long("failed_checks");
-        var measured = complete && total > 0;
-        var risk = measured ? failed * 100.0 / total : 0;
-        var eligible = _report.Bool("eligible");
-        var verdict = complete ? (eligible ? "Passed" : "Review required") : StatusLabel(_report.Str("status"));
         var textWidth = width - 44;
         var policy = Chrome.Wrap(Fonts.Main, 13.5, $"Static analysis of every .NET assembly in the latest {_channel} release. Automatic approval requires fewer than 2.5% failed checks in each assembly.", textWidth, 3);
-        var diagnostics = (_report?["diagnostics"] as JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToList() ?? [];
-        var diagLines = diagnostics.Select(text => Chrome.Wrap(Fonts.Main, 13.5, text, textWidth - 28, 3)).ToList();
+        var diagLines = Diagnostics(_report).Select(text => Chrome.Wrap(Fonts.Main, 13.5, text, textWidth - 28, 3)).ToList();
         var height = 188 + policy.Count * 21 + (measured ? 28 : 0) + 12 + 52 + diagLines.Sum(lines => lines.Count * 21 + 22) + 6;
 
         Item card = Area(ui, "mod-security", left, y, width, height);
         Canvas c = ui.Canvas()!;
         Chrome.Box(c, card.X, card.Y, width, height, Palette.RadiusLarge, Palette.Surface, Palette.Line);
         DrawRing(c, card.X + width / 2, card.Y + 82, measured, risk, eligible);
-        var pillWidth = Fonts.Main.Measure(12.5, verdict) + 18;
-        Widgets.Pill(c, card.X + width / 2 - pillWidth / 2, card.Y + 156, verdict, eligible && measured ? Palette.Good : measured ? Palette.Bad : Palette.Muted);
+        Widgets.Pill(c, card.X + width / 2 - (Fonts.Main.Measure(12.5, verdict) + 18) / 2, card.Y + 156, verdict, color);
 
         var x = card.X + 22;
         var top = card.Y + 188;
@@ -85,17 +78,7 @@ public sealed partial class ModScreen
 
         top += 52;
 
-        for (var i = 0; i < diagnostics.Count; i++)
-        {
-            var boxHeight = diagLines[i].Count * 21 + 14;
-            c = ui.Canvas()!;
-            Chrome.Box(c, x, top, textWidth, boxHeight, Palette.Radius, 0x14E5B85C, 0x5CE5B85C);
-
-            for (var line = 0; line < diagLines[i].Count; line++)
-                Chrome.Text(c, Fonts.Main, 13.5, x + 14, top + 17 + line * 21, diagLines[i][line], Palette.Warn);
-
-            top += boxHeight + 8;
-        }
+        DrawDiagnostics(ui.Canvas()!, x, top, textWidth, diagLines);
 
         return y + height;
     }

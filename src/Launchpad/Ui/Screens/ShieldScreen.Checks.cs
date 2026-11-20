@@ -123,7 +123,7 @@ public sealed partial class ShieldScreen
         for (var a = 0; a < Artifacts.Count; a++)
         {
             var report = Artifacts[a]?["report"];
-            var diagnostics = (report?["diagnostics"] as JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToList() ?? [];
+            var diagnostics = Diagnostics(report);
             var height = 22 + 40 + 4 * 32 + diagnostics.Count * 30 + 14;
             Item card = Area(ui, "shield-assembly-" + a, left, y, width, height);
             Canvas c = ui.Canvas()!;

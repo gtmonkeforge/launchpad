@@ -44,15 +44,43 @@ public sealed partial class ModScreen
         LoadCommunity();
     }
 
+    internal const string ShieldHint = "Static analysis is not a guarantee of safety. Reports reflect the latest release in this channel.";
+
+    internal static (bool Measured, double Risk, bool Eligible, string Verdict, uint Color) ShieldState(JsonNode? report)
+    {
+        var complete = report.Str("status") == "complete";
+        var total = report.Long("total_checks");
+        var measured = complete && total > 0;
+        var risk = measured ? report.Long("failed_checks") * 100.0 / total : 0;
+        var eligible = report.Bool("eligible");
+        var verdict = complete ? (eligible ? "Passed" : "Review required") : StatusLabel(report.Str("status"));
+        var color = eligible && measured ? Palette.Good : measured ? Palette.Bad : Palette.Muted;
+        return (measured, risk, eligible, verdict, color);
+    }
+
+    internal static List<string> Diagnostics(JsonNode? report) => (report?["diagnostics"] as JsonArray)?.Select(item => item?.GetValue<string>() ?? "").ToList() ?? [];
+
+    internal static double DrawDiagnostics(Canvas c, double x, double top, double width, List<List<string>> diagLines)
+    {
+        foreach (var lines in diagLines)
+        {
+            var boxHeight = lines.Count * 21 + 14;
+            Chrome.Box(c, x, top, width, boxHeight, Palette.Radius, 0x14E5B85C, 0x5CE5B85C);
+
+            for (var i = 0; i < lines.Count; i++)
+                Chrome.Text(c, Fonts.Main, 13.5, x + 14, top + 17 + i * 21, lines[i], Palette.Warn);
+
+            top += boxHeight + 8;
+        }
+
+        return top;
+    }
+
     private double DrawShield(Ui ui, double left, double width, double y)
     {
-        var complete = _report.Str("status") == "complete";
-        var total = _report.Long("total_checks");
+        var (measured, risk, eligible, verdict, color) = ShieldState(_report);
         var failed = _report.Long("failed_checks");
-        var measured = complete && total > 0;
-        var risk = measured ? failed * 100.0 / total : 0;
-        var eligible = _report.Bool("eligible");
-        var verdict = complete ? (eligible ? "Passed" : "Review required") : StatusLabel(_report.Str("status"));
+        var total = _report.Long("total_checks");
         var height = _report == null && !_reportFailed ? 130.0 : _report == null ? 110.0 : measured ? 301.0 : 271.0;
 
         Item card = Area(ui, "mod-shield", left, y, width, height);
@@ -63,14 +91,19 @@ public sealed partial class ModScreen
 
         if (_report == null)
         {
-            DrawShieldWaiting(ui, card, left, y, width);
+            if (!_reportFailed)
+            {
+                ui.Pos(left + width / 2 - 10, y + 70);
+                ui.Spinner(20);
+            }
+            else
+                Chrome.Text(ui.Canvas()!, Fonts.Main, 14, card.X + 20, card.Y + 64, "Analysis unavailable.", Palette.Muted);
+
             return y + height;
         }
 
         DrawRing(c, card.X + width / 2, card.Y + 112, measured, risk, eligible);
-
-        var pillWidth = Fonts.Main.Measure(12.5, verdict) + 18;
-        Widgets.Pill(c, card.X + width / 2 - pillWidth / 2, card.Y + 183, verdict, eligible && measured ? Palette.Good : measured ? Palette.Bad : Palette.Muted);
+        Widgets.Pill(c, card.X + width / 2 - (Fonts.Main.Measure(12.5, verdict) + 18) / 2, card.Y + 183, verdict, color);
 
         if (measured)
         {
@@ -78,24 +111,10 @@ public sealed partial class ModScreen
             Chrome.Text(c, Fonts.Mono, 12.5, card.X + width / 2 - Fonts.Mono.Measure(12.5, counts) / 2, card.Y + 227, counts, Palette.Muted);
         }
 
-        var buttonTop = measured ? y + 251 : y + 221;
-
-        if (Button(ui, "mod-shield-report", "Full report", left + 20, buttonTop, width - 40, 30, ButtonStyle.Plain))
+        if (Button(ui, "mod-shield-report", "Full report", left + 20, measured ? y + 251 : y + 221, width - 40, 30, ButtonStyle.Plain))
             OpenShield();
 
         return y + height;
-    }
-
-    private void DrawShieldWaiting(Ui ui, Item card, double left, double y, double width)
-    {
-        if (!_reportFailed)
-        {
-            ui.Pos(left + width / 2 - 10, y + 70);
-            ui.Spinner(20);
-            return;
-        }
-
-        Chrome.Text(ui.Canvas()!, Fonts.Main, 14, card.X + 20, card.Y + 64, "Analysis unavailable.", Palette.Muted);
     }
 
     internal static void DrawRing(Canvas c, double x, double y, bool measured, double risk, bool eligible)

@@ -81,7 +81,6 @@ public sealed partial class ShieldScreen
                 _assemblies = i == 1;
         }
 
-        var failing = FailingCount;
         var copyWidth = Widgets.ButtonWidth("Copy JSON");
 
         if (Widgets.Button(ui, "shield-copy", left + width - copyWidth, y + 2, "Copy JSON", ButtonKind.Subtle, out _))
@@ -95,7 +94,7 @@ public sealed partial class ShieldScreen
 
         ui.Pos(left + 206, y + 8);
 
-        if (ui.Checkbox($"Only failing ({failing})", ref _onlyFailing))
+        if (ui.Checkbox($"Only failing ({FailingCount})", ref _onlyFailing))
             _checksShown = CheckBatch;
 
         ui.Pos(left + width - copyWidth - 12 - 220, y + 2);
