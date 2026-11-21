@@ -1,31 +1,17 @@
-import { app, esc, icon, setTitle, toast } from '/static/js/core.js';
-import { appState, call, loaderNames } from '/_launchpad/bridge.js';
-
-const sections = [
-    ['game', 'Game folder', 'game'],
-    ['loader', 'Mod loader', 'layers'],
-    ['about', 'About Launchpad', 'rocket'],
-];
+import { esc, icon, setTitle, toast } from '/static/js/core.js';
+import { appState, call, launchpad, loaderNames, pageSignal } from '/_launchpad/bridge.js';
+import { launchpadSections, renderShell } from '/static/js/pages/settings.js';
 
 export async function render(section = 'game') {
-    if (!sections.some(([key]) => key === section))
+    if (!launchpadSections.some(([key]) => key === section))
         section = 'game';
 
+    const signal = pageSignal();
+    const body = await renderShell(section);
     setTitle('Launchpad settings');
-    app.innerHTML = `
-        <div class="page-head"><div><h1>Launchpad</h1><p>These settings are stored on this computer.</p></div></div>
-        <div class="settings-layout">
-            <nav class="side-nav surface" aria-label="Launchpad settings">
-                ${sections.map(([key, label, glyph]) => `<a href="/launchpad/${key}" ${key === section ? 'aria-current="page"' : ''}>${icon(glyph)}${label}</a>`).join('')}
-                <a href="/settings">${icon('settings')}Account settings</a>
-                <a href="/settings/devices">${icon('server')}Devices</a>
-            </nav>
-            <div class="stack" id="settings-body"></div>
-        </div>`;
 
-    const body = app.querySelector('#settings-body');
     const draw = async () => renderers[section](body, await appState(true));
-    window.addEventListener('launchpad:mods', () => draw().catch(() => {}));
+    window.addEventListener('launchpad:mods', () => draw().catch(() => {}), { signal });
     await draw();
 }
 
@@ -172,7 +158,79 @@ const renderers = {
                 </dl>
                 <p class="hint">Launchpad is the desktop companion for MonkeForge. Community made. Not affiliated with Another Axiom.</p>
                 <div class="row"><a class="button subtle small" href="/software/launchpad">${icon('rocket')}Launchpad on MonkeForge</a><a class="button subtle small" href="/docs">${icon('note')}Docs</a></div>
+            </section>
+            <section class="surface panel">
+                <h2>${icon('refresh')} Updates</h2>
+                <p class="hint" id="update-status" role="status" aria-live="polite"></p>
+                <pre class="lp-update-notes" id="update-notes" hidden></pre>
+                <label class="check-card toggle-card"><input type="checkbox" id="auto-update" ${state.auto_update ? 'checked' : ''}><div><strong>Update automatically</strong><div class="hint">Download new versions in the background and install them when you close Launchpad.</div></div></label>
+                <div class="row"><button class="button subtle small" id="check-updates">${icon('refresh')}Check for updates</button><button class="button small" id="install-update" hidden>${icon('download')}Restart to update</button></div>
             </section>`;
+
+        const status = body.querySelector('#update-status');
+        const notes = body.querySelector('#update-notes');
+        const check = body.querySelector('#check-updates');
+        const install = body.querySelector('#install-update');
+
+        const show = update => {
+            if (!update || !status.isConnected)
+                return;
+
+            const version = esc(update.version || '');
+            const text = {
+                checking: 'Checking for updates…',
+                current: `Launchpad ${esc(update.current)} is up to date.`,
+                downloading: `Downloading Launchpad ${version}… ${update.progress ?? 0}%`,
+                ready: `Launchpad ${version} is downloaded. Restart to install it, or it installs when you close Launchpad.`,
+                available: update.can_install
+                    ? `Launchpad ${version} is available.`
+                    : `Launchpad ${version} is available. This copy isn’t installed in the usual place, so it can’t update itself. <a data-lp-external href="${esc((launchpad.forge || 'https://monkeforge.org') + '/software/launchpad')}">Download it from MonkeForge</a>.`,
+                error: esc(update.error || 'Launchpad couldn’t check for updates.'),
+            }[update.state] || 'Launchpad checks for updates when it starts and every few hours.';
+
+            status.innerHTML = text;
+            status.classList.toggle('error', update.state === 'error');
+            notes.hidden = !update.notes || !['ready', 'available', 'downloading'].includes(update.state);
+            notes.textContent = update.notes || '';
+            install.hidden = update.state !== 'ready';
+            check.disabled = update.state === 'checking' || update.state === 'downloading';
+        };
+
+        show(state.update);
+        window.addEventListener('launchpad:update', event => show(event.detail), { signal: pageSignal() });
+
+        check.onclick = async () => {
+            check.disabled = true;
+
+            try {
+                show(await call('update.check'));
+            } catch (error) {
+                toast(error.message, 'error');
+            } finally {
+                check.disabled = false;
+            }
+        };
+
+        install.onclick = async () => {
+            install.disabled = true;
+
+            try {
+                await call('update.install');
+            } catch (error) {
+                toast(error.message, 'error');
+                install.disabled = false;
+            }
+        };
+
+        body.querySelector('#auto-update').onchange = async event => {
+            try {
+                await call('update.setAuto', { enabled: event.target.checked });
+                toast(event.target.checked ? 'Launchpad will update itself.' : 'Automatic updates are off. Check here for new versions.');
+            } catch (error) {
+                event.target.checked = !event.target.checked;
+                toast(error.message, 'error');
+            }
+        };
     },
 };
 

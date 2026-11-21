@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>LaunchpadServer</AssemblyName>
+    <RootNamespace>Launchpad.Server</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Product>MonkeForge Launchpad Server</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../Launchpad/Updates/ReleaseManifest.cs" Link="Shared/ReleaseManifest.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="deploy/**" Link="%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" CopyToOutputDirectory="Never" />
+  </ItemGroup>
+
+</Project>

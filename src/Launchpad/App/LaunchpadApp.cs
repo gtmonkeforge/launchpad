@@ -5,6 +5,7 @@ using Launchpad.Infrastructure;
 using Launchpad.Injector;
 using Launchpad.Mods;
 using Launchpad.Security;
+using Launchpad.Updates;
 
 namespace Launchpad.App;
 
@@ -20,11 +21,15 @@ public sealed class LaunchpadApp : IDisposable
         Loaders = new LoaderInstaller(LoaderInstaller.CreateHttp(), message => Emit("progress", new { message }));
         Mods = new ModManager(Forge, Payloads, Loaders, () => Settings, message => Emit("progress", new { message }));
         Injector = new InjectorHost(Payloads, () => Settings.GamePath);
+        Updates = new Updater();
 
         Forge.SessionChanged += () => Emit("session", new { user = Forge.User });
         Mods.Changed += () => Emit("mods", null);
         Injector.Status += (message, warning) => Emit("injector", new { message, warning });
+        Updates.Changed += state => Emit("update", state);
     }
+
+    public Updater Updates { get; }
 
     public Settings Settings { get; }
     public ISecretStore Secrets { get; }
@@ -83,6 +88,7 @@ public sealed class LaunchpadApp : IDisposable
     public void Dispose()
     {
         Injector.Dispose();
+        Updates.Dispose();
         Forge.Dispose();
     }
 }

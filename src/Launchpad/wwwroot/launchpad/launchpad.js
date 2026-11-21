@@ -1,10 +1,10 @@
 import { auth, toast } from '/static/js/core.js';
-import { call, launchpad, on, send } from './bridge.js';
+import { call, installDllFiles, launchpad, on, send } from './bridge.js';
 
 const forge = launchpad.forge || 'https://monkeforge.org';
 const windows = launchpad.os === 'windows';
 
-const appRoute = /^\/(?:browse|library|upload|terms|privacy|login|signup|verify-email|reset-password|unsubscribe|friends|chat|groups|transfers|notifications|software(?:\/[a-z]+)?|profile(?:\/[^/]+)?|settings(?:\/[a-z]+)?|launchpad(?:\/[a-z]+)?|docs(?:\/.*)?|view\/[^/]+(?:\/monkeshield)?)?\/?$/;
+const appRoute = /^\/(?:browse|library|upload|terms|privacy|login|signup|verify-email|reset-password|unsubscribe|friends|chat|groups|transfers|notifications|software(?:\/[a-z]+)?|profile(?:\/[^/]+)?|settings(?:\/[a-z]+(?:\/[a-f0-9]{24})?)?|launchpad(?:\/[a-z]+)?|docs(?:\/.*)?|view\/[^/]+(?:\/monkeshield|\/extensions|\/docs(?:\/[^/]+)?)?)?\/?$/;
 
 export function isAppUrl(url) {
     return url.origin === location.origin && appRoute.test(url.pathname);
@@ -43,9 +43,11 @@ function go(href, replace = false) {
     if (url.origin === forge && appRoute.test(url.pathname))
         url = new URL(url.pathname + url.search + url.hash, location.origin);
 
-    if (isAppUrl(url))
-        replace ? location.replace(url.href) : location.assign(url.href);
-    else
+    if (isAppUrl(url)) {
+        // Pages switch in place when the router can; otherwise fall back to a full load.
+        if (!window.__lpRoute?.(url, replace))
+            replace ? location.replace(url.href) : location.assign(url.href);
+    } else
         openExternal(url.href);
 }
 
@@ -70,7 +72,10 @@ window.navigation?.addEventListener('navigate', event => {
 window.addEventListener('focus', () => {
     if (returningFromBrowser) {
         returningFromBrowser = false;
-        location.reload();
+
+        // Something may have changed on the website (a purchase, a sign-in); refresh the page in place.
+        if (!window.__lpRefresh?.())
+            location.reload();
     }
 });
 
@@ -225,12 +230,10 @@ if (bar) {
         lastX = event.screenX;
         lastY = event.screenY;
 
-        if (document.documentElement.classList.contains('lp-maximized'))
-            return;
-
+        // Windows restores a maximized window when it's dragged, like a native title bar.
         if (windows)
             send('window.drag');
-        else
+        else if (!document.documentElement.classList.contains('lp-maximized'))
             track(event, (dx, dy) => send('window.moveBy', { dx, dy }));
     });
 
@@ -260,6 +263,100 @@ export function showActivity(message) {
     if (message)
         activityTimer = setTimeout(() => box.hidden = true, 20000);
 }
+
+const carriesFiles = event => [...(event.dataTransfer?.types || [])].includes('Files');
+const pageOwnsDrops = () => !!document.querySelector('[data-drop], [data-lp-own-drop]');
+let dragDepth = 0;
+
+function setDropping(active) {
+    let overlay = document.querySelector('#lp-drop');
+
+    if (active && !overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'lp-drop';
+        overlay.className = 'lp-drop';
+        overlay.innerHTML = '<div><strong>Drop a DLL to install it</strong><span>It goes into your current mod loader’s mods folder.</span></div>';
+        document.body.append(overlay);
+    }
+
+    if (overlay)
+        overlay.hidden = !active;
+}
+
+window.addEventListener('dragenter', event => {
+    if (!carriesFiles(event))
+        return;
+
+    event.preventDefault();
+    dragDepth++;
+    setDropping(!pageOwnsDrops());
+});
+
+window.addEventListener('dragover', event => {
+    if (!carriesFiles(event))
+        return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+});
+
+window.addEventListener('dragleave', event => {
+    if (!carriesFiles(event))
+        return;
+
+    dragDepth = Math.max(0, dragDepth - 1);
+
+    if (!dragDepth)
+        setDropping(false);
+});
+
+window.addEventListener('drop', event => {
+    if (!carriesFiles(event))
+        return;
+
+    const handled = event.defaultPrevented;
+    event.preventDefault();
+    dragDepth = 0;
+    setDropping(false);
+
+    if (handled || pageOwnsDrops())
+        return;
+
+    installDllFiles(event.dataTransfer.files, toast);
+});
+
+// A downloaded update shows as a button in the title bar. Installs that can't update themselves (a dev build or a
+// tarball unpacked somewhere else) link to the download page instead.
+function showUpdate(update) {
+    const button = document.querySelector('#lp-update');
+
+    if (!button || !update)
+        return;
+
+    const ready = update.state === 'ready';
+    const manual = update.state === 'available' && !update.can_install;
+    button.hidden = !ready && !manual;
+    button.disabled = false;
+    button.querySelector('#lp-update-text').textContent = ready ? `Restart to update` : `Launchpad ${update.version} is out`;
+    button.title = ready ? `Launchpad ${update.version} is downloaded. Restart to install it.` : 'Download the new version from MonkeForge';
+    button.onclick = () => {
+        if (!ready) {
+            openExternal(forge + '/software/launchpad');
+            return;
+        }
+
+        button.disabled = true;
+        call('update.install').catch(error => {
+            button.disabled = false;
+            toast(error.message, 'error');
+        });
+    };
+
+    window.dispatchEvent(new CustomEvent('launchpad:update', { detail: update }));
+}
+
+on('update', showUpdate);
+call('update.state').then(showUpdate).catch(() => {});
 
 on('window', data => setMaximized(data?.maximized));
 on('progress', data => showActivity(data?.message || ''));

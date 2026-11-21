@@ -3,6 +3,9 @@ import { app } from '../core.js';
 
 let installedOnly = new URLSearchParams(location.search).get('installed') === '1';
 
+// The filter only applies while browse is shown; other pages also list mods.
+window.addEventListener('launchpad:navigate', () => installedOnly = false);
+
 const siteFetch = window.fetch.bind(window);
 window.fetch = (input, init) => {
     if (installedOnly && typeof input === 'string' && input.startsWith('/api/v1/mods?'))
@@ -20,6 +23,7 @@ history.replaceState = (state, title, url) => {
 };
 
 export async function render() {
+    installedOnly = new URLSearchParams(location.search).get('installed') === '1';
     const rendering = siteRender();
     addFilter();
     await rendering;

@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="src/Launchpad/Launchpad.csproj" />
+  <Project Path="src/Launchpad.Server/Launchpad.Server.csproj" />
   <Project Path="src/Launchpad.Injector/BepInEx/MonkeForge.Injector.BepInEx.csproj" />
   <Project Path="src/Launchpad.Injector/MelonLoader/MonkeForge.Injector.MelonLoader.csproj" />
   <Project Path="tests/Launchpad.Tests/Launchpad.Tests.csproj" />

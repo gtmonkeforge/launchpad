@@ -1,4 +1,4 @@
-import { api, app, auth, brand, myGroups, capLabels, capTips, categories, esc, icon, initials, loaderLabels, modBadges, requireSignIn, setTitle, size, toast } from '../core.js';
+import { api, app, auth, brand, myGroups, capLabels, capTips, categories, esc, icon, initials, loaderLabels, choiceBadge, requireSignIn, setTitle, size, toast } from '../core.js';
 import { fromMinor, storeConfig, toMinor } from '../store.js';
 import { copy, fill } from '../store-copy.js';
 import { tierManager } from '../tiers.js';
@@ -20,6 +20,13 @@ export async function render() {
     const guid = params.get('guid');
     const channelName = params.get('channel') || 'stable';
     const mod = guid ? await api('/api/v1/mods/' + encodeURIComponent(guid) + '?channel=' + encodeURIComponent(channelName)) : null;
+    const extendsId = mod ? null : params.get('extends');
+    const parent = extendsId ? await api('/api/v1/mods/' + encodeURIComponent(extendsId)).catch(() => null) : null;
+
+    if (extendsId && (!parent || !parent.extensions_enabled || parent.extends)) {
+        app.innerHTML = `<div class="empty"><h2>This mod doesn’t accept extensions</h2><p>Its developers haven’t turned on the Extensions tab.</p>${parent ? `<a class="button" href="/view/${encodeURIComponent(parent.id)}">${icon('back')}${esc(parent.name)}</a>` : ''}</div>`;
+        return;
+    }
 
     const groups = await myGroups();
     const authorGroup = mod ? groups.find(g => g.id === mod.author.id) : null;
@@ -37,12 +44,14 @@ export async function render() {
     const requested = params.get('as');
     const selectedAuthor = () => authors.find(a => a.id === app.querySelector('#author')?.value) || authors.find(a => a.id === requested) || authors[0];
 
-    setTitle(mod ? 'Manage ' + mod.name : 'Publish');
+    setTitle(mod ? 'Manage ' + mod.name : parent ? 'Publish an extension' : 'Publish');
     const links = mod?.links || [];
 
     app.innerHTML = `
         ${mod ? `<a class="breadcrumb" href="/view/${encodeURIComponent(mod.guid)}">${icon('back')}${esc(mod.name)}</a>` : ''}
-        <div class="page-head"><div><h1>${mod ? esc(mod.name) : 'Publish a mod'}</h1><p>${mod ? 'Edit the listing, then ship a new release.' : 'Three steps: identity, page, release.'}</p></div></div>
+        ${parent ? `<a class="breadcrumb" href="/view/${encodeURIComponent(parent.id)}/extensions">${icon('back')}${esc(parent.name)} extensions</a>` : ''}
+        <div class="page-head"><div><h1>${mod ? esc(mod.name) : parent ? 'Publish an extension' : 'Publish a mod'}</h1><p>${mod ? 'Edit the listing, then ship a new release.' : 'Three steps: identity, page, release.'}</p></div></div>
+        ${parent ? `<p class="notice">${icon('layers')} This will be an extension for <a href="/view/${encodeURIComponent(parent.id)}">${esc(parent.name)}</a>. Extensions are always free. After staff review it, it’s listed on ${esc(parent.name)}’s Extensions tab once its developers approve it.</p>` : ''}
         <div class="stepper" role="tablist" aria-label="Publishing steps">
             <button type="button" role="tab" data-step="0"><span>01</span><div><strong>Identity</strong><small>Name, GUID, visibility</small></div></button>
             <button type="button" role="tab" data-step="1"><span>02</span><div><strong>Page</strong><small>Description, images, links</small></div></button>
@@ -61,7 +70,7 @@ export async function render() {
                             ${mod ? '' : '<div class="field"><label for="visibility">Visibility</label><select id="visibility"><option value="public">Public · reviewed</option><option value="private">Private · only you</option><option value="code">Requires a channel code</option></select></div>'}
                         </div>
                         <div class="field"><label for="source">Source code <span>optional</span></label><input id="source" type="url" maxlength="2000" placeholder="https://github.com/you/your-mod" value="${esc(mod?.source_url || '')}"></div>
-                        ${mod ? '' : `<div class="field"><label class="check"><input type="checkbox" id="uses-injector">${esc(copy.injectorCheck)}</label><p class="hint">${esc(copy.injectorHint)}</p></div>`}
+                        ${mod || parent ? '' : `<div class="field"><label class="check"><input type="checkbox" id="uses-injector">${esc(copy.injectorCheck)}</label><p class="hint">${esc(copy.injectorHint)}</p></div>`}
                     </div>
                     <div class="row sticky-actions"><span class="hint">Step 1 of 3</span><span class="spacer"></span><button type="button" class="button" data-go="1">Continue${icon('next')}</button></div>
                 </section>
@@ -148,7 +157,7 @@ export async function render() {
 
     form.onsubmit = event => {
         event.preventDefault();
-        publish(mod, form);
+        publish(mod, form, parent);
     };
 
     app.querySelector('#save-page')?.addEventListener('click', () => savePage(mod, form));
@@ -361,7 +370,7 @@ function preview(mod, form, html, objectUrls, authorName) {
     app.querySelector('#preview').innerHTML = `
         ${banner ? `<img class="preview-banner" src="${esc(banner)}" alt="">` : ''}
         <div class="mod-hero">${logo ? `<img class="mod-icon" src="${esc(logo)}" alt="">` : `<span class="mod-icon">${esc(initials(name))}</span>`}
-            <div><h1>${esc(name)}</h1><div class="meta-line"><span class="author-chip">${esc(authorName)}</span><span class="pill">${esc(form.querySelector('#category').value)}</span></div>${mod?.badges?.length ? `<div class="badges">${modBadges(mod)}</div>` : ''}</div></div>
+            <div><h1>${esc(name)}${mod ? choiceBadge(mod) : ''}</h1><div class="meta-line"><span class="author-chip">${esc(authorName)}</span><span class="pill">${esc(form.querySelector('#category').value)}</span></div></div></div>
         <div class="preview-body">
             ${shot ? `<img class="screenshot" src="${esc(shot)}" alt="">` : ''}
             <div class="markdown">${html || '<p class="hint">Your description appears here.</p>'}</div>
@@ -410,7 +419,7 @@ function validate(mod, form, release) {
     return null;
 }
 
-async function publish(mod, form) {
+async function publish(mod, form, parent) {
     const error = app.querySelector('#publish-error');
     const button = app.querySelector('#publish');
     const problem = validate(mod, form, true);
@@ -442,6 +451,9 @@ async function publish(mod, form) {
 
     if (!mod && app.querySelector('#author'))
         data.set('author_id', value('author'));
+
+    if (parent)
+        data.set('extends', parent.guid);
 
     for (const [key, on] of Object.entries(capabilities(form)))
         data.set(key, on ? 'true' : 'false');
@@ -525,6 +537,19 @@ async function manage(mod, canTransfer) {
 
     root.innerHTML = `
         <div class="section-title"><h2>Manage</h2></div>
+        <section class="surface panel" id="tabs-panel">
+            <h2>${icon('grid')} Page tabs</h2>
+            <p class="hint">Add tabs to this mod’s page. Turning a tab off hides it but keeps everything in it.</p>
+            <div class="tab-toggles">
+                ${mod.extends ? '' : `<div><label class="check"><input type="checkbox" id="tab-extensions" ${mod.extensions_enabled ? 'checked' : ''}>Extensions</label>
+                    <p class="hint">Let other developers publish free extensions for this mod. You choose which are listed on the tab and in the Extensions API, and which are featured.</p>
+                    <a class="button ghost small" href="/view/${encodeURIComponent(mod.guid)}/extensions" id="open-extensions" ${mod.extensions_enabled ? '' : 'hidden'}>${icon('check')}Review extensions</a></div>`}
+                <div><label class="check"><input type="checkbox" id="tab-docs" ${mod.docs_enabled ? 'checked' : ''}>Docs</label>
+                    <p class="hint">Host Markdown documentation pages on this mod’s page. You can write pages before turning the tab on.</p>
+                    <a class="button ghost small" href="/view/${encodeURIComponent(mod.guid)}/docs">${icon('edit')}Edit docs</a></div>
+            </div>
+            <button class="button subtle" id="save-tabs">Save tabs</button>
+        </section>
         <div class="grid-2">
             <section class="surface panel" id="channels-panel">
                 <h2>${icon('layers')} Release channels <span class="hint mono">${channels.length}/20</span></h2>
@@ -621,7 +646,28 @@ async function manage(mod, canTransfer) {
         }
     };
 
-    pricing(mod, root.querySelector('#pricing-panel'));
+    root.querySelector('#save-tabs').onclick = async () => {
+        const json = { docs: root.querySelector('#tab-docs').checked };
+        const extensions = root.querySelector('#tab-extensions');
+
+        if (extensions)
+            json.extensions = extensions.checked;
+
+        try {
+            const result = await api(base + '/tabs', { method: 'PATCH', json });
+            mod.extensions_enabled = result.extensions_enabled;
+            mod.docs_enabled = result.docs_enabled;
+            root.querySelector('#open-extensions')?.toggleAttribute('hidden', !result.extensions_enabled);
+            toast('Tabs saved.');
+        } catch (error) {
+            toast(error.message, 'error');
+        }
+    };
+
+    if (mod.extends)
+        root.querySelector('#pricing-panel').innerHTML = `<h2>${icon('tag')} ${esc(copy.pricingTitle)}</h2><p class="hint">This is an extension for <a href="/view/${encodeURIComponent(mod.extends.id)}">${esc(mod.extends.name)}</a>. Extensions are always free, so they can’t have a price or tiers.</p>`;
+    else
+        pricing(mod, root.querySelector('#pricing-panel'));
 
     root.querySelector('#transfer-form').onsubmit = async event => {
         event.preventDefault();

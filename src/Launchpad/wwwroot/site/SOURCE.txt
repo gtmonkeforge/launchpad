@@ -1,1 +1,1 @@
-﻿Copied from openforge f7e7872 by scripts/sync-site.ps1. Don't edit; change openforge and sync again.
+﻿Copied from openforge 4045cf6 by scripts/sync-site.ps1. Don't edit; change openforge and sync again.

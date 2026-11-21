@@ -80,7 +80,26 @@ public sealed class SiteServer : IAsyncDisposable
         WebApplication app = builder.Build();
         app.Run(async http =>
         {
-            await HandleAsync(http);
+            try
+            {
+                await HandleAsync(http);
+            }
+            catch (Exception ex) when (!http.RequestAborted.IsCancellationRequested)
+            {
+                Log?.Invoke($"error {http.Request.Method} {http.Request.Path}: {ex.GetType().Name}: {ex.Message}");
+
+                if (!http.Response.HasStarted)
+                {
+                    http.Response.Clear();
+                    http.Response.StatusCode = 502;
+                    http.Response.Headers.CacheControl = "no-store";
+                    await http.Response.WriteAsJsonAsync(new { error = "Launchpad couldn't finish that request. Try again." });
+                }
+            }
+            catch (Exception) when (http.RequestAborted.IsCancellationRequested)
+            {
+                return;
+            }
 
             if (http.Response.StatusCode >= 400)
                 Log?.Invoke($"{http.Response.StatusCode} {http.Request.Method} {http.Request.Path}{http.Request.QueryString}");
@@ -294,7 +313,7 @@ public sealed class SiteServer : IAsyncDisposable
         catch (ForgeException ex)
         {
             http.Response.StatusCode = ex.Status is >= 400 and < 600 ? ex.Status : 502;
-            await http.Response.WriteAsJsonAsync(new { ex = ex.Message }, http.RequestAborted);
+            await http.Response.WriteAsJsonAsync(new { error = ex.Message }, http.RequestAborted);
             return;
         }
 
@@ -313,18 +332,43 @@ public sealed class SiteServer : IAsyncDisposable
     private async Task RelayAsync(HttpContext http, HttpMethod method, string pathAndQuery, HttpContent? content)
     {
         HttpResponse response = http.Response;
-        HttpResponseMessage upstream;
+        HttpResponseMessage? upstream = null;
 
-        try
+        // Reads carry no body, so a transient failure (dropped connection, 502/503/504) is retried once
+        // instead of leaving a hole in the page.
+        var attempts = content == null && (method == HttpMethod.Get || method == HttpMethod.Head) ? 2 : 1;
+
+        for (var attempt = 1; attempt <= attempts; attempt++)
         {
-            upstream = await _forge.ForwardAsync(method, pathAndQuery, content, http.Request.Headers.Accept.ToString(), http.RequestAborted);
+            try
+            {
+                upstream = await _forge.ForwardAsync(method, pathAndQuery, content, http.Request.Headers.Accept.ToString(), http.RequestAborted);
+            }
+            catch (ForgeException ex)
+            {
+                if (attempt < attempts)
+                {
+                    await Task.Delay(250, http.RequestAborted);
+                    continue;
+                }
+
+                response.StatusCode = 502;
+                await response.WriteAsJsonAsync(new { error = ex.Message }, http.RequestAborted);
+                return;
+            }
+
+            if (attempt < attempts && (int)upstream.StatusCode is 500 or 502 or 503 or 504)
+            {
+                upstream.Dispose();
+                await Task.Delay(250, http.RequestAborted);
+                continue;
+            }
+
+            break;
         }
-        catch (ForgeException ex)
-        {
-            response.StatusCode = 502;
-            await response.WriteAsJsonAsync(new { ex = ex.Message }, http.RequestAborted);
+
+        if (upstream == null)
             return;
-        }
 
         using (upstream)
         {

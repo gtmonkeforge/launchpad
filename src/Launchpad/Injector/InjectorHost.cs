@@ -18,7 +18,7 @@ public sealed class InjectorHost : IDisposable
     private readonly Func<string?> _game;
     private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
     private readonly CancellationTokenSource _stop = new();
-    private readonly string _token = NativeSignIn.Base64Url(RandomNumberGenerator.GetBytes(32));
+    private readonly string _token = OAuthSignIn.Base64Url(RandomNumberGenerator.GetBytes(32));
     private readonly object _gate = new();
     private string? _published;
 

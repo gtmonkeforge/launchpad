@@ -92,4 +92,63 @@ on('mods', () => {
     installedRequest = null;
 });
 
-export const loaderNames = { bepinex5: 'BepInEx 5', melonloader: 'MelonLoader' };
+// Pages switch without a reload, so listeners a page adds should pass this signal to be removed when it's left.
+let pageController = new AbortController();
+window.addEventListener('launchpad:navigate', () => {
+    pageController.abort();
+    pageController = new AbortController();
+});
+
+export const pageSignal = () => pageController.signal;
+
+export const maxCustomBytes = 64 * 1024 * 1024;
+
+function base64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).slice(String(reader.result).indexOf(',') + 1));
+        reader.onerror = () => reject(new Error(`Launchpad couldn’t read ${file.name}.`));
+        reader.readAsDataURL(file);
+    });
+}
+
+let installingFiles = false;
+
+export async function installDllFiles(files, toast) {
+    files = [...files];
+
+    if (!files.length)
+        return;
+
+    if (installingFiles) {
+        toast('Launchpad is already installing a DLL. Wait for it to finish.', 'error');
+        return;
+    }
+
+    installingFiles = true;
+
+    try {
+        for (const file of files) {
+            if (!/\.dll$/i.test(file.name)) {
+                toast(`${file.name} isn’t a .dll file.`, 'error');
+                continue;
+            }
+
+            if (file.size > maxCustomBytes) {
+                toast(`${file.name} is too large to install.`, 'error');
+                continue;
+            }
+
+            try {
+                const result = await call('mods.installFile', { name: file.name, data: await base64(file) });
+                toast(`${result.name} is installed.`);
+            } catch (error) {
+                toast(error.message, 'error');
+            }
+        }
+    } finally {
+        installingFiles = false;
+    }
+}
+
+export const loaderNames ={ bepinex5: 'BepInEx 5', melonloader: 'MelonLoader' };

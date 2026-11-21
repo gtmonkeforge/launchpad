@@ -14,19 +14,33 @@ public sealed class ForgeException(int status, string message) : UserFacingExcep
     public int Status { get; } = status;
 }
 
+// Talks to MonkeForge as the signed-in person. Launchpad is an OAuth2 app: it holds an access token (an hour) and a
+// refresh token (60 days, replaced on every use) and sends the access token as a bearer token. Bearer requests don't
+// need MonkeForge's CSRF token or cookies.
+//
+// On monkeforge.org the token requests go through Launchpad's own server (LaunchpadServer.Root), which adds the
+// app's client secret. Against a self-hosted server (LAUNCHPAD_SERVER), Launchpad acts as a public client and talks to
+// that server's token endpoint directly; set LAUNCHPAD_CLIENT_ID to an app registered there.
 public sealed class ForgeClient : IDisposable
 {
     public const string OfficialUrl = "https://monkeforge.org";
-    private const string SessionSecret = "session";
+    public const string OfficialClientId = "5fadc971d6867d50fcbd0dd6";
+
+    private const string TokenSecret = "oauth";
+    private const string LegacySessionSecret = "session";
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan RefreshMargin = TimeSpan.FromMinutes(2);
 
     private readonly HttpClient _http;
     private readonly HttpClient _pinned;
     private readonly ISecretStore _secrets;
-    private readonly object _gate = new();
-    private string _cookie = "";
+    private readonly SemaphoreSlim _refreshGate = new(1, 1);
+    private readonly object _persistGate = new();
+    private volatile Tokens? _tokens;
 
-    private volatile bool _persist;
+    private sealed record Tokens(string Access, string Refresh, DateTimeOffset Expires, string Scope);
+
+    private sealed class TokenRejectedException(string message) : Exception(message);
 
     public ForgeClient(ISecretStore secrets, Uri? baseUri = null, HttpMessageHandler? handler = null)
     {
@@ -37,13 +51,18 @@ public sealed class ForgeClient : IDisposable
 
         foreach (HttpClient client in new[] { _http, _pinned }.Distinct())
             client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("MonkeForge-Launchpad", typeof(ForgeClient).Assembly.GetName().Version?.ToString(3) ?? "2.0.0"));
+
+        (ClientId, TokenEndpoint, RevokeEndpoint) = ResolveAuth();
     }
 
     public Uri BaseUri { get; }
     public bool IsOfficial => BaseUri.Host.Equals("monkeforge.org", StringComparison.OrdinalIgnoreCase);
-    public string Csrf { get; private set; } = "";
+    public string ClientId { get; }
+    public Uri TokenEndpoint { get; }
+    public Uri RevokeEndpoint { get; }
     public JsonObject? User { get; private set; }
     public string? UserId => User.Str("id");
+    public bool SignedIn => _tokens != null;
 
     public string? RestoreError { get; private set; }
 
@@ -56,10 +75,28 @@ public sealed class ForgeClient : IDisposable
         if (string.IsNullOrWhiteSpace(custom))
             return new Uri(OfficialUrl);
 
-        if (!Uri.TryCreate(custom.TrimEnd('/'), UriKind.Absolute, out Uri? uri) || (uri.Scheme != "https" && !(uri.Scheme == "http" && uri.IsLoopback)))
-            throw new UserFacingException("LAUNCHPAD_SERVER must be an https:// URL, or http:// on this computer.");
+        return new Uri(CheckedUrl(custom, "LAUNCHPAD_SERVER").GetLeftPart(UriPartial.Authority));
+    }
 
-        return new Uri(uri.GetLeftPart(UriPartial.Authority));
+    private static Uri CheckedUrl(string value, string name)
+    {
+        if (!Uri.TryCreate(value.Trim().TrimEnd('/'), UriKind.Absolute, out Uri? uri) || (uri.Scheme != "https" && !(uri.Scheme == "http" && uri.IsLoopback)))
+            throw new UserFacingException($"{name} must be an https:// URL, or http:// on this computer.");
+
+        return uri;
+    }
+
+    private (string ClientId, Uri Token, Uri Revoke) ResolveAuth()
+    {
+        var clientOverride = Environment.GetEnvironmentVariable("LAUNCHPAD_CLIENT_ID")?.Trim();
+
+        // monkeforge.org: through the Launchpad server, which holds the client secret.
+        if (IsOfficial)
+            return (string.IsNullOrEmpty(clientOverride) ? OfficialClientId : clientOverride, LaunchpadServer.Resolve("/api/v1/oauth/token"), LaunchpadServer.Resolve("/api/v1/oauth/revoke"));
+
+        // A self-hosted server: straight to it as a public client, unless a test Launchpad server is set.
+        Uri authServer = LaunchpadServer.Override ?? BaseUri;
+        return (clientOverride ?? "", new Uri(authServer, "/api/v1/oauth/token"), new Uri(authServer, "/api/v1/oauth/revoke"));
     }
 
     private static SocketsHttpHandler NewHandler(bool pin)
@@ -88,23 +125,27 @@ public sealed class ForgeClient : IDisposable
         return uri;
     }
 
+    // ---- tokens -----------------------------------------------------------------------------------------------------
+
+    public OAuthSignIn StartSignIn()
+    {
+        if (ClientId.Length == 0)
+            throw new UserFacingException("Signing in to this server needs an OAuth app. Register a public client there and set LAUNCHPAD_CLIENT_ID.");
+
+        return new OAuthSignIn(BaseUri, ClientId);
+    }
+
     public async Task RestoreAsync(CancellationToken ct = default)
     {
-        var saved = _secrets.Get(SessionSecret);
-        var cookie = saved == null ? "" : Encoding.UTF8.GetString(saved);
+        // Launchpad 2.0 kept a website session cookie. MonkeForge no longer issues those to apps, so it's dropped.
+        Forget(LegacySessionSecret);
 
-        if (!cookie.StartsWith("session=", StringComparison.Ordinal) || cookie.Contains('\r') || cookie.Contains('\n'))
-        {
-            if (saved != null)
-                _secrets.Delete(SessionSecret);
+        Tokens? saved = ReadSaved();
 
+        if (saved == null)
             return;
-        }
 
-        lock (_gate)
-            _cookie = cookie;
-
-        _persist = true;
+        _tokens = saved;
 
         try
         {
@@ -117,61 +158,305 @@ public sealed class ForgeClient : IDisposable
         }
     }
 
+    private Tokens? ReadSaved()
+    {
+        byte[]? bytes;
+
+        try
+        {
+            bytes = _secrets.Get(TokenSecret);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.Cryptography.CryptographicException or UserFacingException)
+        {
+            return null;
+        }
+
+        if (bytes == null)
+            return null;
+
+        try
+        {
+            JsonNode? node = JsonNode.Parse(bytes);
+
+            if (node.Str("access_token") is { Length: > 0 } access && node.Str("refresh_token") is { Length: > 0 } refresh && Clean(access) && Clean(refresh))
+                return new Tokens(access, refresh, DateTimeOffset.FromUnixTimeSeconds(node.Long("expires_at")), node.Str("scope") ?? "");
+        }
+        catch (JsonException)
+        {
+        }
+
+        Forget(TokenSecret);
+        return null;
+    }
+
+    private static bool Clean(string token) => token.Length <= 512 && token.All(c => c > ' ' && c < 127);
+
+    private async Task<Tokens> RequestTokensAsync(Dictionary<string, string> form, CancellationToken ct)
+    {
+        form["client_id"] = ClientId;
+        using var request = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint) { Content = new FormUrlEncodedContent(form) };
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        HttpResponseMessage response;
+
+        try
+        {
+            response = await _http.SendAsync(request, ct);
+        }
+        catch (HttpRequestException)
+        {
+            throw new ForgeException(0, "Launchpad’s sign-in server couldn’t be reached. Check your internet connection.");
+        }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new ForgeException(0, "Launchpad’s sign-in server took too long to respond. Try again.");
+        }
+
+        using (response)
+        {
+            JsonNode? body = null;
+
+            try
+            {
+                body = JsonNode.Parse(await response.Content.ReadAsStringAsync(ct));
+            }
+            catch (JsonException)
+            {
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = body.Str("error");
+                var description = body.Str("error_description") is { Length: > 0 } d ? d : $"The sign-in server returned {(int)response.StatusCode}.";
+
+                if (error == "invalid_grant")
+                    throw new TokenRejectedException(description);
+
+                throw new ForgeException(response.StatusCode == HttpStatusCode.TooManyRequests ? 429 : (int)response.StatusCode, description);
+            }
+
+            if (body.Str("access_token") is not { Length: > 0 } access || body.Str("refresh_token") is not { Length: > 0 } refresh || !Clean(access) || !Clean(refresh)
+                || !string.Equals(body.Str("token_type"), "Bearer", StringComparison.OrdinalIgnoreCase))
+                throw new ForgeException(502, "The sign-in server sent a response Launchpad couldn’t read.");
+
+            var lifetime = Math.Clamp(body.Long("expires_in") is > 0 and var seconds ? seconds : 3600, 60, 24 * 3600);
+            return new Tokens(access, refresh, DateTimeOffset.UtcNow.AddSeconds(lifetime), body.Str("scope") ?? "");
+        }
+    }
+
+    // Returns a usable access token, refreshing it when it's about to expire or after the server rejected it.
+    // Refreshes are serialized: refresh tokens rotate, so two at once would sign Launchpad out.
+    private async Task<string?> AccessTokenAsync(string? rejected, CancellationToken ct)
+    {
+        bool Usable(Tokens t) => rejected == null ? t.Expires - DateTimeOffset.UtcNow > RefreshMargin : t.Access != rejected;
+
+        Tokens? current = _tokens;
+
+        if (current == null)
+            return null;
+
+        if (Usable(current))
+            return current.Access;
+
+        await _refreshGate.WaitAsync(ct);
+
+        try
+        {
+            current = _tokens;
+
+            if (current == null)
+                return null;
+
+            if (Usable(current))
+                return current.Access;
+
+            Tokens fresh;
+
+            try
+            {
+                // Not cancellable: once the server has rotated the refresh token, the new one has to be kept.
+                fresh = await RequestTokensAsync(new Dictionary<string, string> { ["grant_type"] = "refresh_token", ["refresh_token"] = current.Refresh }, CancellationToken.None);
+            }
+            catch (TokenRejectedException)
+            {
+                // Revoked, expired, or signed out everywhere: sign in again.
+                if (ReferenceEquals(_tokens, current))
+                    ClearSession();
+
+                return null;
+            }
+
+            if (!ReferenceEquals(_tokens, current))
+                return _tokens?.Access;
+
+            _tokens = fresh;
+            Persist(fresh);
+            return fresh.Access;
+        }
+        finally
+        {
+            _refreshGate.Release();
+        }
+    }
+
     public async Task RefreshSessionAsync(CancellationToken ct = default)
     {
         JsonNode session = await GetJsonAsync("/api/v1/session", ct);
 
-        if (session["user"] is not JsonObject user || session.Str("csrf_token") is not { Length: > 0 } csrf)
+        if (session["user"] is not JsonObject user)
         {
             ClearSession();
             return;
         }
 
         User = (JsonObject)user.DeepClone();
-        Csrf = csrf;
         SessionChanged?.Invoke();
     }
 
     public void ClearSession()
     {
-        bool had;
-
-        lock (_gate)
-        {
-            had = _cookie.Length > 0 || User != null;
-            _cookie = "";
-        }
-
-        _persist = false;
-
+        var had = _tokens != null || User != null;
+        _tokens = null;
         User = null;
-        Csrf = "";
-        _secrets.Delete(SessionSecret);
+        Persist(null);
 
         if (had)
             SessionChanged?.Invoke();
     }
 
-    public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, HttpContent? content = null, bool pinned = false, CancellationToken ct = default)
+    public async Task ExchangeAsync(string code, string verifier, string redirectUri, CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(method, Resolve(path)) { Content = content };
-        string cookie;
-
-        lock (_gate)
-            cookie = _cookie;
-
-        if (cookie.Length > 0)
-            request.Headers.TryAddWithoutValidation("Cookie", cookie);
-
-        if (method != HttpMethod.Get && method != HttpMethod.Head && Csrf.Length > 0)
-            request.Headers.TryAddWithoutValidation("X-CSRF-Token", Csrf);
-
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        HttpResponseMessage response;
+        Tokens tokens;
 
         try
         {
-            response = await (pinned ? _pinned : _http).SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            tokens = await RequestTokensAsync(new Dictionary<string, string>
+            {
+                ["grant_type"] = "authorization_code",
+                ["code"] = code,
+                ["redirect_uri"] = redirectUri,
+                ["code_verifier"] = verifier,
+            }, CancellationToken.None);
+        }
+        catch (TokenRejectedException ex)
+        {
+            throw new ForgeException(400, ex.Message);
+        }
+
+        if (!tokens.Scope.Split(' ').Contains(OAuthSignIn.Scope))
+        {
+            await RevokeAsync(tokens.Refresh);
+            throw new ForgeException(403, "MonkeForge didn’t give Launchpad access to your account, so it can’t install mods for you. Try signing in again.");
+        }
+
+        _tokens = tokens;
+        Persist(tokens);
+
+        try
+        {
+            await RefreshSessionAsync(ct);
+        }
+        catch
+        {
+            ClearSession();
+            throw;
+        }
+
+        if (User == null)
+            throw new ForgeException(500, "MonkeForge didn’t return your account. Try signing in again.");
+
+        RestoreError = null;
+    }
+
+    public async Task LogoutAsync(CancellationToken ct = default)
+    {
+        Tokens? tokens = _tokens;
+        ClearSession();
+
+        if (tokens != null)
+            await RevokeAsync(tokens.Refresh);
+    }
+
+    // Revoking the refresh token ends this sign-in on MonkeForge too. Best-effort: signing out locally always works.
+    private async Task RevokeAsync(string refresh)
+    {
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var content = new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = refresh, ["client_id"] = ClientId });
+            using HttpResponseMessage _ = await _http.PostAsync(RevokeEndpoint, content, timeout.Token);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+        }
+    }
+
+    private void Persist(Tokens? tokens)
+    {
+        lock (_persistGate)
+        {
+            try
+            {
+                if (tokens == null)
+                {
+                    _secrets.Delete(TokenSecret);
+                }
+                else if (ReferenceEquals(_tokens, tokens))
+                {
+                    var json = new JsonObject
+                    {
+                        ["access_token"] = tokens.Access,
+                        ["refresh_token"] = tokens.Refresh,
+                        ["expires_at"] = tokens.Expires.ToUnixTimeSeconds(),
+                        ["scope"] = tokens.Scope,
+                    };
+
+                    _secrets.Set(TokenSecret, Encoding.UTF8.GetBytes(json.ToJsonString()));
+                }
+            }
+            // Saving is best-effort: a failed save must never fail the request that refreshed the token.
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.Cryptography.CryptographicException or UserFacingException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception)
+            {
+            }
+        }
+    }
+
+    private void Forget(string name)
+    {
+        lock (_persistGate)
+        {
+            try
+            {
+                if (_secrets.Get(name) != null)
+                    _secrets.Delete(name);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.Cryptography.CryptographicException or UserFacingException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception)
+            {
+            }
+        }
+    }
+
+    // ---- API requests -----------------------------------------------------------------------------------------------
+
+    private HttpRequestMessage NewRequest(HttpMethod method, string pathAndQuery, HttpContent? content, string? access, string? accept)
+    {
+        var request = new HttpRequestMessage(method, Resolve(pathAndQuery)) { Content = content };
+
+        if (access != null)
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
+
+        if (string.IsNullOrEmpty(accept))
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        else
+            request.Headers.TryAddWithoutValidation("Accept", accept);
+
+        return request;
+    }
+
+    private async Task<HttpResponseMessage> TransmitAsync(HttpClient client, HttpRequestMessage request, CancellationToken ct)
+    {
+        try
+        {
+            return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
         }
         catch (HttpRequestException ex) when (ex.InnerException is System.Security.Authentication.AuthenticationException)
         {
@@ -185,64 +470,45 @@ public sealed class ForgeClient : IDisposable
         {
             throw new ForgeException(0, "MonkeForge took too long to respond. Try again.");
         }
+    }
 
-        CaptureCookie(response);
+    // Sends with the current access token. A 401 means the token was revoked or expired early: refresh it, and retry
+    // once if the request has no body to resend. If the refresh is refused, the person is signed out.
+    private async Task<HttpResponseMessage> AuthorizedAsync(HttpClient client, HttpMethod method, string pathAndQuery, HttpContent? content, string? accept, CancellationToken ct)
+    {
+        var access = await AccessTokenAsync(null, ct);
+        HttpResponseMessage response;
+
+        using (HttpRequestMessage request = NewRequest(method, pathAndQuery, content, access, accept))
+            response = await TransmitAsync(client, request, ct);
+
+        if (response.StatusCode != HttpStatusCode.Unauthorized || access == null)
+            return response;
+
+        var fresh = await AccessTokenAsync(access, ct);
+
+        if (fresh == null || content != null)
+            return response;
+
+        response.Dispose();
+
+        using (HttpRequestMessage retry = NewRequest(method, pathAndQuery, null, fresh, accept))
+            return await TransmitAsync(client, retry, ct);
+    }
+
+    public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, HttpContent? content = null, bool pinned = false, CancellationToken ct = default)
+    {
+        HttpResponseMessage response = await AuthorizedAsync(pinned ? _pinned : _http, method, path, content, null, ct);
 
         if (response.IsSuccessStatusCode)
             return response;
 
         using (response)
-        {
-            var message = await ErrorMessageAsync(response, ct);
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized && User != null && path != "/api/v1/session" && !path.StartsWith("/api/v1/injector/", StringComparison.Ordinal))
-            {
-                ClearSession();
-            }
-
-            throw new ForgeException((int)response.StatusCode, message);
-        }
+            throw new ForgeException((int)response.StatusCode, await ErrorMessageAsync(response, ct));
     }
 
-    public async Task<HttpResponseMessage> ForwardAsync(HttpMethod method, string pathAndQuery, HttpContent? content, string? accept, CancellationToken ct)
-    {
-        using var request = new HttpRequestMessage(method, Resolve(pathAndQuery)) { Content = content };
-        string cookie;
-
-        lock (_gate)
-            cookie = _cookie;
-
-        if (cookie.Length > 0)
-            request.Headers.TryAddWithoutValidation("Cookie", cookie);
-
-        if (method != HttpMethod.Get && method != HttpMethod.Head && Csrf.Length > 0)
-            request.Headers.TryAddWithoutValidation("X-CSRF-Token", Csrf);
-
-        if (!string.IsNullOrEmpty(accept))
-            request.Headers.TryAddWithoutValidation("Accept", accept);
-
-        HttpResponseMessage response;
-
-        try
-        {
-            response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-        }
-        catch (HttpRequestException)
-        {
-            throw new ForgeException(0, "MonkeForge couldn't be reached. Check your internet connection.");
-        }
-        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
-        {
-            throw new ForgeException(0, "MonkeForge took too long to respond. Try again.");
-        }
-
-        CaptureCookie(response);
-
-        if (response.StatusCode == HttpStatusCode.Unauthorized && User != null && !pathAndQuery.StartsWith("/api/v1/session", StringComparison.Ordinal))
-            ClearSession();
-
-        return response;
-    }
+    public Task<HttpResponseMessage> ForwardAsync(HttpMethod method, string pathAndQuery, HttpContent? content, string? accept, CancellationToken ct) =>
+        AuthorizedAsync(_http, method, pathAndQuery, content, accept, ct);
 
     private static async Task<string> ErrorMessageAsync(HttpResponseMessage response, CancellationToken ct)
     {
@@ -265,49 +531,6 @@ public sealed class ForgeClient : IDisposable
             >= HttpStatusCode.InternalServerError => "MonkeForge had a problem. Try again in a moment.",
             _ => $"MonkeForge returned {(int)response.StatusCode}.",
         };
-    }
-
-    private void CaptureCookie(HttpResponseMessage response)
-    {
-        if (!response.Headers.TryGetValues("Set-Cookie", out IEnumerable<string>? values))
-            return;
-
-        foreach (var header in values)
-        {
-            var pair = header.Split(';', 2)[0].Trim();
-
-            if (!pair.StartsWith("session=", StringComparison.Ordinal))
-                continue;
-
-            var deleted = pair == "session=" || header.Contains("expires=Thu, 01 Jan 1970", StringComparison.OrdinalIgnoreCase) || header.Contains("max-age=0", StringComparison.OrdinalIgnoreCase);
-
-            lock (_gate)
-            {
-                if (deleted)
-                {
-                    _cookie = "";
-                }
-                else if (pair != _cookie)
-                {
-                    _cookie = pair;
-                }
-                else
-                {
-                    return;
-                }
-            }
-
-            if (deleted)
-            {
-                _persist = false;
-                _secrets.Delete(SessionSecret);
-            }
-            else if (_persist || response.RequestMessage?.RequestUri?.AbsolutePath == "/api/v1/auth/native/exchange")
-            {
-                _persist = true;
-                _secrets.Set(SessionSecret, Encoding.UTF8.GetBytes(pair));
-            }
-        }
     }
 
     public async Task<JsonNode> GetJsonAsync(string path, CancellationToken ct = default)
@@ -337,49 +560,13 @@ public sealed class ForgeClient : IDisposable
         }
     }
 
-    public async Task ExchangeAsync(string code, string verifier, string redirectUri, CancellationToken ct)
-    {
-        lock (_gate)
-            _cookie = "";
-
-        JsonNode result = await SendJsonAsync(HttpMethod.Post, "/api/v1/auth/native/exchange", new { code, code_verifier = verifier, redirect_uri = redirectUri }, false, ct);
-
-        lock (_gate)
-        {
-            if (_cookie.Length == 0)
-                throw new ForgeException(500, "MonkeForge didn't return a session. Try signing in again.");
-        }
-
-        if (result["user"] is not JsonObject user || result.Str("csrf_token") is not { Length: > 0 } csrf)
-            throw new ForgeException(500, "MonkeForge's sign-in response was incomplete. Try again.");
-
-        User = (JsonObject)user.DeepClone();
-        Csrf = csrf;
-        RestoreError = null;
-        SessionChanged?.Invoke();
-    }
-
-    public async Task LogoutAsync(CancellationToken ct = default)
-    {
-        try
-        {
-            if (User != null)
-                await SendJsonAsync(HttpMethod.Post, "/api/v1/logout", new { }, false, ct);
-        }
-        catch (ForgeException)
-        {
-        }
-        finally
-        {
-            ClearSession();
-        }
-    }
-
     public void Dispose()
     {
         _http.Dispose();
 
         if (!ReferenceEquals(_pinned, _http))
             _pinned.Dispose();
+
+        _refreshGate.Dispose();
     }
 }

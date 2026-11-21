@@ -1,7 +1,18 @@
 import { api, app, auth, date, emptyState, esc, icon, modIcon, money, setTitle, signInUrl, toast } from '/static/js/core.js';
-import { appState, call, installedMods, loaderNames } from '/_launchpad/bridge.js';
+import { appState, call, installDllFiles, installedMods, loaderNames, pageSignal } from '/_launchpad/bridge.js';
+
+// Store listings and purchases are kept between visits so opening the Library again doesn't refetch
+// everything. "Check for updates" clears them.
+let details = {};
+let purchaseCache = null;
+
+const detailKey = mod => mod.guid + '\n' + mod.channel;
+
+// Coming back from the browser may mean something was just bought.
+window.addEventListener('launchpad:refresh', () => purchaseCache = null);
 
 export async function render() {
+    const signal = pageSignal();
     setTitle('Library');
     const state = await appState(true);
 
@@ -14,47 +25,61 @@ export async function render() {
     app.innerHTML = `
         <div class="page-head">
             <div><h1>Library</h1><p>${esc(state.game.label || 'Gorilla Tag')} · <span class="mono">${esc(state.game.path)}</span></p></div>
-            <div class="row"><button class="button subtle" id="refresh">${icon('refresh')}Check for updates</button><button class="button" id="update-all" hidden>${icon('download')}Update all</button></div>
+            <div class="row"><button class="button subtle" id="install-dll" title="Install a mod DLL from your computer. You can also drop a DLL anywhere in Launchpad.">${icon('upload')}Install DLL</button><input type="file" id="dll-file" accept=".dll" multiple hidden><button class="button subtle" id="refresh">${icon('refresh')}Check for updates</button><button class="button" id="update-all" hidden>${icon('download')}Update all</button></div>
         </div>
         ${state.game.running ? '<div class="notice">Gorilla Tag is running. Close it before installing or removing mods that use files.</div>' : ''}
         <div id="installed"><div class="page-loading"><span class="spinner"></span>Loading…</div></div>
         <div class="section-title"><h2>Purchases</h2><span class="spacer"></span>${auth.user ? `<a class="button ghost small" href="${esc(auth.user.profile_url)}#purchases">${icon('tray')}Receipts & disputes</a>` : ''}</div>
         <div id="purchases"></div>`;
 
-    let details = {};
-
     const draw = async () => {
-        const mods = await installedMods(true);
+        const mods = await installedMods();
+
+        if (signal.aborted)
+            return;
+
         const box = app.querySelector('#installed');
         const loader = (await appState()).settings.loader;
 
         if (!mods.length) {
-            box.innerHTML = emptyState('No mods installed yet', 'Find something you like and install it from its page.', `<a class="button" href="/browse">${icon('grid')}Browse mods</a>`);
+            box.innerHTML = emptyState('No mods installed yet', 'Find something you like and install it from its page, or drop a mod DLL anywhere in Launchpad.', `<a class="button" href="/browse">${icon('grid')}Browse mods</a>`);
             app.querySelector('#update-all').hidden = true;
             await purchases(mods);
             return;
         }
 
-        await Promise.all(mods.filter(m => !details[m.guid]).map(async m => {
-            details[m.guid] = await api('/api/v1/mods/' + encodeURIComponent(m.guid) + '?channel=' + encodeURIComponent(m.channel)).catch(() => ({ name: m.name }));
+        // Failed lookups aren't cached, so they're retried on the next visit.
+        const fetched = {};
+        await Promise.all(mods.filter(m => !m.custom && !details[detailKey(m)]).map(async m => {
+            try {
+                fetched[m.guid] = details[detailKey(m)] = await api('/api/v1/mods/' + encodeURIComponent(m.guid) + '?channel=' + encodeURIComponent(m.channel));
+            } catch {
+                fetched[m.guid] = { name: m.name };
+            }
         }));
 
-        const updatable = mods.filter(m => details[m.guid].current_version && details[m.guid].current_version !== m.version && m.loader === loader);
+        if (signal.aborted)
+            return;
+
+        const detailOf = m => details[detailKey(m)] || fetched[m.guid] || { name: m.name };
+
+        const updatable = mods.filter(m => !m.custom && detailOf(m).current_version && detailOf(m).current_version !== m.version && m.loader === loader);
         app.querySelector('#update-all').hidden = updatable.length < 2;
 
         box.innerHTML = `<div class="library-list">${mods.map(m => {
-            const detail = details[m.guid];
+            const detail = m.custom ? { name: m.name } : detailOf(m);
             const latest = detail.current_version;
             const inactive = m.loader !== loader;
 
             return `<article class="surface library-row">
                 ${modIcon({ name: m.name, logo: detail.logo })}
                 <div>
-                    <h3><a href="/view/${esc(encodeURIComponent(m.guid))}${m.channel !== 'stable' ? '?channel=' + esc(encodeURIComponent(m.channel)) : ''}">${esc(detail.name || m.name)}</a></h3>
+                    <h3>${m.custom ? esc(m.name) : `<a href="/view/${esc(encodeURIComponent(m.guid))}${m.channel !== 'stable' ? '?channel=' + esc(encodeURIComponent(m.channel)) : ''}">${esc(detail.name || m.name)}</a>`}</h3>
                     <div class="badges">
                         <span class="pill mono">v${esc(m.version)}</span>
                         <span class="pill">${esc(loaderNames[m.loader] || m.loader)}</span>
-                        ${m.channel !== 'stable' ? `<span class="pill accent mono">${esc(m.channel)}</span>` : ''}
+                        ${m.custom ? '<span class="pill" title="Installed from a DLL on this computer">Custom DLL</span>' : ''}
+                        ${m.channel !== 'stable' && !m.custom ? `<span class="pill accent mono">${esc(m.channel)}</span>` : ''}
                         ${m.injector ? `<span class="pill" title="Loaded into the game from memory while Launchpad is open">${icon('lock')}Injector</span>` : ''}
                         ${latest && latest !== m.version ? `<span class="pill warn">v${esc(latest)} available</span>` : ''}
                         ${inactive ? '<span class="pill bad">Inactive loader</span>' : ''}
@@ -105,9 +130,25 @@ export async function render() {
         }
     };
 
+    const dllInput = app.querySelector('#dll-file');
+    app.querySelector('#install-dll').onclick = () => dllInput.click();
+    dllInput.onchange = async () => {
+        const button = app.querySelector('#install-dll');
+        const files = [...dllInput.files];
+        dllInput.value = '';
+        button.disabled = true;
+
+        try {
+            await installDllFiles(files, toast);
+        } finally {
+            button.disabled = false;
+        }
+    };
+
     app.querySelector('#refresh').onclick = async event => {
         event.currentTarget.disabled = true;
         details = {};
+        purchaseCache = null;
         await draw();
         event.currentTarget.disabled = false;
     };
@@ -117,14 +158,14 @@ export async function render() {
         const loader = (await appState()).settings.loader;
 
         for (const mod of await installedMods()) {
-            const latest = details[mod.guid]?.current_version;
+            const latest = details[detailKey(mod)]?.current_version;
 
             if (latest && latest !== mod.version && mod.loader === loader && !await update(null, mod))
                 break;
         }
     };
 
-    window.addEventListener('launchpad:mods', () => draw().catch(() => {}));
+    window.addEventListener('launchpad:mods', () => draw().catch(() => {}), { signal });
     await draw();
 }
 
@@ -137,7 +178,13 @@ async function purchases(installed) {
     }
 
     try {
-        const { items } = await api('/api/v1/purchases');
+        if (purchaseCache?.user !== auth.user.id)
+            purchaseCache = { user: auth.user.id, items: (await api('/api/v1/purchases')).items };
+
+        const { items } = purchaseCache;
+
+        if (!box.isConnected)
+            return;
 
         if (!items.length) {
             box.innerHTML = `<div class="surface panel"><p class="hint">Mods you buy will show up here.</p></div>`;

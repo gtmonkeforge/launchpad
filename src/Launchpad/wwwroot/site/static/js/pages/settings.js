@@ -1,4 +1,4 @@
-import { DEFAULT_ACCENT, ago, api, app, applyAccent, auth, avatar, brand, date, esc, icon, money, myGroups, readAccent, requireSignIn, setTitle, signInUrl, storeAccent, toast } from '../core.js';
+import { DEFAULT_ACCENT, ago, api, app, appLogo, applyAccent, auth, avatar, brand, copy as copyText, date, esc, icon, money, myGroups, readAccent, requireSignIn, setTitle, signInUrl, storeAccent, toast, verifiedMark } from '../core.js';
 import { copy, fill } from '../store-copy.js';
 import { cancelled, passkeysSupported, registerPasskey } from '../passkeys.js';
 
@@ -12,19 +12,24 @@ const sections = [
     ['account', 'Account', 'user'],
     ['security', 'Sign-in & security', 'lock'],
     ['emails', 'Email', 'bell'],
+    { group: 'Developer' },
+    ['applications', 'Applications', 'code'],
 ];
+
+const pages = sections.filter(entry => Array.isArray(entry));
 
 const swatches = ['#dc5c3b', '#f59e0b', '#22c55e', '#14b8a6', '#60cdff', '#6366f1', '#a855f7', '#ec4899', '#e5e7eb'];
 
-export async function render(section = 'appearance') {
-    if (!sections.some(([key]) => key === section))
+export async function render(section = 'appearance', item) {
+    if (!pages.some(([key]) => key === section))
         section = 'appearance';
 
     setTitle('Settings');
     app.innerHTML = `
-        <div class="page-head"><div><h1>${esc(sections.find(([key]) => key === section)[1])}</h1></div></div>
+        <div class="page-head"><div><h1>${esc(pages.find(([key]) => key === section)[1])}</h1></div></div>
         <div class="settings-layout">
-            <nav class="side-nav surface" aria-label="Settings">${sections.map(([key, label, glyph]) => `<a href="/settings${key === 'appearance' ? '' : '/' + key}" ${key === section ? 'aria-current="page"' : ''}>${icon(glyph)}${label}</a>`).join('')}</nav>
+            <nav class="side-nav surface" aria-label="Settings">${sections.map(entry => entry.group ? `<div class="side-nav-label">${esc(entry.group)}</div>`
+                : `<a href="/settings${entry[0] === 'appearance' ? '' : '/' + entry[0]}" ${entry[0] === section ? 'aria-current="page"' : ''}>${icon(entry[2])}${entry[1]}</a>`).join('')}</nav>
             <div id="settings-body"></div>
         </div>`;
 
@@ -46,6 +51,8 @@ export async function render(section = 'appearance') {
         await security(body);
     else if (section === 'emails')
         await emails(body);
+    else if (section === 'applications')
+        await (item ? application(body, item) : applications(body));
     else
         account(body);
 }
@@ -393,9 +400,14 @@ async function security(body) {
                 <div id="passkey-list">${account.passkeys.length ? account.passkeys.map(k => `<div class="key-item">${icon('key')}<div class="grow"><strong>${esc(k.name)}</strong><div class="hint">Added ${esc(date(k.created_at))} · ${k.last_used_at ? 'last used ' + esc(ago(k.last_used_at)) : 'never used'}</div></div>
                     <button class="button ghost small" data-rename="${esc(k.id)}" data-name="${esc(k.name)}">Rename</button><button class="button danger small" data-remove="${esc(k.id)}">Remove</button></div>`).join('') : '<p class="hint">No passkeys yet.</p>'}</div>
             </section>
+            <section class="surface panel" id="authorized-apps">
+                <h2>Authorized apps</h2>
+                <p class="hint">Apps you’ve signed in to with your ${esc(brand.name)} account. Removing one signs it out straight away.</p>
+                <div id="grant-list"><p class="hint">Loading…</p></div>
+            </section>
             <section class="surface panel">
                 <h2>Sign out everywhere</h2>
-                <p class="hint">Ends every session on other browsers and apps, including Launchpad and the CLI. This browser stays signed in. Access keys keep working; revoke them in <a href="/settings/keys">Access keys</a>.</p>
+                <p class="hint">Ends every session on other browsers and signs out every app you’ve authorized, including Launchpad and the CLI. Signing back in to them won’t ask you to authorize them again. This browser stays signed in. Access keys keep working; revoke them in <a href="/settings/keys">Access keys</a>.</p>
                 <button class="button danger" id="sign-out-all">${icon('logout')}Sign out other devices</button>
             </section>`;
 
@@ -471,6 +483,8 @@ async function security(body) {
             }
         });
 
+        grants(body.querySelector('#grant-list'));
+
         body.querySelector('#sign-out-all').onclick = async () => {
             if (!confirm('Sign out every other browser and app?'))
                 return;
@@ -516,4 +530,256 @@ async function emails(body) {
             toast(error.message, 'error');
         }
     });
+}
+
+const scopeIcon = key => ({ account: 'shield', email: 'mail', publish: 'upload' }[key] || 'user');
+
+async function grants(list) {
+    const load = async () => {
+        const result = await api('/api/v1/oauth/authorizations');
+        list.innerHTML = result.items.length ? result.items.map(g => `<div class="key-item">${appLogo(g.app, 'sm')}<div class="grow">
+                <strong>${esc(g.app.name)}</strong>${g.app.verified ? verifiedMark() : ''}${g.app.owner ? ` <span class="hint">by ${esc(g.app.owner.name)}</span>` : ''}
+                <div class="hint">${g.scopes.map(scope => esc(scope.label)).join(' · ')}</div>
+                <div class="hint">Authorized ${esc(date(g.created_at))} · ${g.last_used_at ? 'last signed in ' + esc(ago(g.last_used_at)) : 'never used'}</div></div>
+            <button class="button danger small" data-disconnect="${esc(g.app.id)}" data-name="${esc(g.app.name)}">Remove</button></div>`).join('')
+            : '<p class="hint">You haven’t authorized any apps.</p>';
+
+        list.querySelectorAll('[data-disconnect]').forEach(button => button.onclick = async () => {
+            if (!confirm(`Remove ${button.dataset.name}? It’s signed out at once and has to ask again before it can use your account.`))
+                return;
+
+            try {
+                await api('/api/v1/oauth/authorizations/' + encodeURIComponent(button.dataset.disconnect), { method: 'DELETE' });
+                toast(`${button.dataset.name} was removed.`);
+                await load();
+            } catch (error) {
+                toast(error.message, 'error');
+            }
+        });
+    };
+
+    await load().catch(error => list.innerHTML = `<p class="error">${esc(error.message)}</p>`);
+}
+
+// ---- Developer -> Applications ------------------------------------------------------------------------------------
+
+async function applications(body) {
+    if (!auth.user) {
+        body.innerHTML = requireSignIn('Applications', `Sign in to register apps that people can sign in to with their ${brand.name} account.`);
+        return;
+    }
+
+    body.innerHTML = `<section class="surface panel">
+            <h2>Sign in with ${esc(brand.name)}</h2>
+            <p class="hint">Register an OAuth2 application to let people sign in to your website, bot, launcher or tool with their ${esc(brand.name)} account. You get a client ID and secret, and people see your app’s name and logo when they approve it. <a href="/docs/guides/oauth-apps">Read the developer guide</a></p>
+            <form class="row" id="app-form"><label class="sr-only" for="app-name">Application name</label><input id="app-name" required minlength="2" maxlength="40" placeholder="My mod manager"><button class="button" type="submit">${icon('plus')}New application</button></form>
+        </section>
+        <section class="surface panel"><h2>Your applications</h2><div id="app-list"><p class="hint">Loading…</p></div></section>`;
+
+    const list = body.querySelector('#app-list');
+    const result = await api('/api/v1/oauth/apps').catch(error => ({ error }));
+
+    if (result.error) {
+        list.innerHTML = `<p class="error">${esc(result.error.message)}</p>`;
+        return;
+    }
+
+    list.innerHTML = result.items.length ? result.items.map(a => `<a class="key-item app-row" href="/settings/applications/${esc(a.id)}">${appLogo(a, 'sm')}<div class="grow">
+            <strong>${esc(a.name)}</strong>${a.verified ? verifiedMark(false) : ''}
+            <div class="hint">${a.public_client ? 'Public client' : 'Confidential client'} · ${a.users === 1 ? '1 user' : `${a.users} users`} · created ${esc(date(a.created_at))}</div></div>${icon('next')}</a>`).join('')
+        : `<p class="hint">No applications yet. You can have up to ${result.max_apps}.</p>`;
+
+    body.querySelector('#app-form').onsubmit = async event => {
+        event.preventDefault();
+
+        try {
+            const created = await api('/api/v1/oauth/apps', { method: 'POST', json: { name: body.querySelector('#app-name').value.trim() } });
+            location.assign('/settings/applications/' + created.id);
+        } catch (error) {
+            toast(error.message, 'error');
+        }
+    };
+}
+
+async function application(body, id) {
+    if (!auth.user) {
+        body.innerHTML = requireSignIn('Applications', 'Sign in to manage your applications.');
+        return;
+    }
+
+    let data;
+
+    try {
+        data = await api('/api/v1/oauth/apps/' + encodeURIComponent(id));
+    } catch (error) {
+        body.innerHTML = `<section class="surface panel"><h2>Application not found</h2><p class="hint">${esc(error.message)}</p><a class="button subtle" href="/settings/applications">${icon('back')}All applications</a></section>`;
+        return;
+    }
+
+    const base = location.origin;
+    const draw = () => {
+        const firstRedirect = data.redirect_uris[0] || 'https://example.com/callback';
+        const example = `${base}/oauth/authorize?` + new URLSearchParams({ response_type: 'code', client_id: data.client_id, redirect_uri: firstRedirect, scope: 'identify', state: 'RANDOM_STATE', code_challenge: 'S256_CHALLENGE', code_challenge_method: 'S256' }).toString().replace(/%2F/g, '/').replace(/%3A/g, ':');
+
+        body.innerHTML = `
+            <p><a class="hint" href="/settings/applications">${icon('back')}All applications</a></p>
+            <section class="surface panel">
+                <div class="row app-head">${appLogo(data, 'lg')}<div class="grow"><h2 class="app-title">${esc(data.name)}${data.verified ? verifiedMark() : ''}</h2>
+                    <div class="hint">${data.verified ? `Verified ${esc(date(data.verified_at))}. People see the checkmark when they sign in.` : `Not verified. Staff verify apps from creators they’ve checked; ask ${esc(brand.name)} staff if you’d like yours verified.`}</div></div>
+                    <span class="pill ${data.verified ? 'good' : ''}">${data.verified ? 'Verified' : 'Unverified'}</span></div>
+            </section>
+            <section class="surface panel">
+                <h2>General information</h2>
+                <p class="hint">What people see when they authorize your app.${data.verified ? ' <strong>Changing the name, website or logo removes verification</strong> until staff check it again.' : ''}</p>
+                <div class="field"><span class="field-label">Logo<span>Square PNG, JPEG or WebP, up to 5 MB</span></span>
+                    <div class="row">${appLogo(data, 'lg')}<label class="button subtle small">${icon('upload')}Upload<input type="file" id="app-logo" accept="image/png,image/jpeg,image/webp" hidden></label>${data.logo ? '<button class="button ghost small" id="app-logo-remove">Remove</button>' : ''}</div></div>
+                <form class="stack" id="app-general">
+                    <div class="field"><label for="app-edit-name">Name</label><input id="app-edit-name" required minlength="2" maxlength="40" value="${esc(data.name)}"></div>
+                    <div class="field"><label for="app-description">Description<span>Optional, up to 400 characters</span></label><textarea id="app-description" maxlength="400" rows="3">${esc(data.description)}</textarea></div>
+                    <div class="field"><label for="app-homepage">Website<span>Optional</span></label><input id="app-homepage" type="url" maxlength="500" placeholder="https://example.com" value="${esc(data.homepage_url || '')}"></div>
+                    <div class="row"><span class="spacer"></span><button class="button" type="submit">Save</button></div>
+                </form>
+            </section>
+            <section class="surface panel">
+                <h2>OAuth2</h2>
+                <div class="field"><span class="field-label">Client ID<span>Public. Put it in your authorization links.</span></span><div class="copy-field"><input readonly value="${esc(data.client_id)}" aria-label="Client ID"><button class="button subtle" data-copy-value="${esc(data.client_id)}">${icon('copy')}Copy</button></div></div>
+                <form class="stack" id="app-oauth">
+                    <div class="field"><label for="app-redirects">Redirects<span>One per line, up to 10. https://, http://127.0.0.1 (any port) or an app scheme like com.example.app:/callback</span></label>
+                        <textarea id="app-redirects" rows="4" class="mono-input" spellcheck="false" placeholder="https://example.com/auth/callback">${esc(data.redirect_uris.join('\n'))}</textarea></div>
+                    <label class="check-card toggle-card"><input type="checkbox" id="app-public" ${data.public_client ? 'checked' : ''}><div><strong>Public client</strong><div class="hint">For desktop and mobile apps that can’t keep a secret. They must use PKCE instead of a client secret. Leave off for apps with a server.</div></div></label>
+                    <div class="row"><span class="spacer"></span><button class="button" type="submit">Save</button></div>
+                </form>
+            </section>
+            <section class="surface panel">
+                <div class="row"><h2>Client secrets</h2><span class="spacer"></span><button class="button small" id="secret-new">${icon('plus')}New secret</button></div>
+                <p class="hint">${data.public_client ? 'Public clients don’t need a secret. If you create one, the app can still use it.' : 'Your server sends a secret with every token request. Keep it out of anything you ship to users. Create a new one before deleting the old one to rotate without downtime.'}</p>
+                <div class="new-key" id="new-secret" hidden><p><strong>Copy this secret now.</strong> It won’t be shown again.</p><div class="copy-field"><input id="secret-value" readonly aria-label="New secret" spellcheck="false"><button class="button subtle" id="secret-copy">${icon('copy')}Copy</button></div><p><button class="button ghost small" id="secret-done">I saved it</button></p></div>
+                ${data.secrets.length ? data.secrets.map(secret => `<div class="key-item">${icon('key')}<div class="grow"><strong>${esc(secret.name)}</strong> <code class="faint">${esc(secret.prefix)}…</code><div class="hint">Created ${esc(date(secret.created_at))} · ${secret.last_used_at ? 'last used ' + esc(ago(secret.last_used_at)) : 'never used'}</div></div>
+                    <button class="button danger small" data-secret="${esc(secret.id)}">Delete</button></div>`).join('') : `<p class="hint">${data.public_client ? 'No secrets.' : 'No secrets yet. Create one before your app can sign anyone in.'}</p>`}
+            </section>
+            <section class="surface panel">
+                <h2>Endpoints</h2>
+                <div class="endpoint-list">
+                    <div><span>Authorize</span><code>${esc(base)}/oauth/authorize</code></div>
+                    <div><span>Token</span><code>${esc(base)}/api/v1/oauth/token</code></div>
+                    <div><span>Revoke</span><code>${esc(base)}/api/v1/oauth/revoke</code></div>
+                    <div><span>User info</span><code>${esc(base)}/api/v1/oauth/userinfo</code></div>
+                    <div><span>Discovery</span><code>${esc(base)}/.well-known/oauth-authorization-server</code></div>
+                </div>
+                <p class="hint">Scopes: <code>identify</code> (always included), <code>email</code>, <code>publish</code>${data.verified ? ', and <code>account</code>' : '. Verified apps can also ask for <code>account</code>'}.</p>
+                <div class="terminal"><header><i></i><i></i><i></i><span>authorize link</span></header><pre>${esc(example)}</pre></div>
+            </section>
+            <section class="surface panel">
+                <h2>Delete application</h2>
+                <p class="hint">Everyone who authorized it is signed out, and its client ID and secrets stop working. This can’t be undone.</p>
+                <button class="button danger" id="app-delete">${icon('trash')}Delete ${esc(data.name)}</button>
+            </section>`;
+
+        bind();
+    };
+
+    const save = async (json, message) => {
+        try {
+            const wasVerified = data.verified;
+            data = await api('/api/v1/oauth/apps/' + encodeURIComponent(id), { method: 'PATCH', json });
+            toast(wasVerified && !data.verified ? 'Saved. The app needs to be verified again.' : message);
+            draw();
+        } catch (error) {
+            toast(error.message, 'error');
+        }
+    };
+
+    const bind = () => {
+        body.querySelectorAll('[data-copy-value]').forEach(button => button.onclick = () => copyText(button.dataset.copyValue, 'Client ID copied.'));
+
+        body.querySelector('#app-general').onsubmit = event => {
+            event.preventDefault();
+            save({ name: body.querySelector('#app-edit-name').value.trim(), description: body.querySelector('#app-description').value.trim(), homepage_url: body.querySelector('#app-homepage').value.trim() }, 'Application saved.');
+        };
+
+        body.querySelector('#app-oauth').onsubmit = event => {
+            event.preventDefault();
+            const redirect_uris = body.querySelector('#app-redirects').value.split('\n').map(line => line.trim()).filter(Boolean);
+            save({ redirect_uris, public_client: body.querySelector('#app-public').checked }, 'OAuth2 settings saved.');
+        };
+
+        body.querySelector('#app-logo').onchange = async event => {
+            const file = event.target.files[0];
+
+            if (!file)
+                return;
+
+            const form = new FormData();
+            form.append('logo', file);
+
+            try {
+                const wasVerified = data.verified;
+                data = await api('/api/v1/oauth/apps/' + encodeURIComponent(id) + '/logo', { method: 'POST', body: form });
+                toast(wasVerified ? 'Logo updated. The app needs to be verified again.' : 'Logo updated.');
+                draw();
+            } catch (error) {
+                toast(error.message, 'error');
+            }
+        };
+
+        body.querySelector('#app-logo-remove')?.addEventListener('click', async () => {
+            try {
+                data = await api('/api/v1/oauth/apps/' + encodeURIComponent(id) + '/logo', { method: 'DELETE' });
+                draw();
+            } catch (error) {
+                toast(error.message, 'error');
+            }
+        });
+
+        body.querySelector('#secret-new').onclick = async () => {
+            const name = prompt('Name this secret so you can tell it apart later:', 'Production');
+
+            if (name === null)
+                return;
+
+            try {
+                const created = await api('/api/v1/oauth/apps/' + encodeURIComponent(id) + '/secrets', { method: 'POST', json: { name: name.trim() } });
+                data = await api('/api/v1/oauth/apps/' + encodeURIComponent(id));
+                draw();
+                body.querySelector('#secret-value').value = created.secret;
+                body.querySelector('#new-secret').hidden = false;
+            } catch (error) {
+                toast(error.message, 'error');
+            }
+        };
+
+        body.querySelector('#secret-copy').onclick = () => copyText(body.querySelector('#secret-value').value, 'Secret copied.');
+        body.querySelector('#secret-done').onclick = () => {
+            body.querySelector('#secret-value').value = '';
+            body.querySelector('#new-secret').hidden = true;
+        };
+
+        body.querySelectorAll('[data-secret]').forEach(button => button.onclick = async () => {
+            if (!confirm('Delete this secret? Anything still using it will stop being able to sign people in.'))
+                return;
+
+            try {
+                await api('/api/v1/oauth/apps/' + encodeURIComponent(id) + '/secrets/' + encodeURIComponent(button.dataset.secret), { method: 'DELETE' });
+                data = await api('/api/v1/oauth/apps/' + encodeURIComponent(id));
+                draw();
+            } catch (error) {
+                toast(error.message, 'error');
+            }
+        });
+
+        body.querySelector('#app-delete').onclick = async () => {
+            if (prompt(`Type ${data.name} to delete this application.`) !== data.name)
+                return;
+
+            try {
+                await api('/api/v1/oauth/apps/' + encodeURIComponent(id), { method: 'DELETE' });
+                toast('Application deleted.');
+                location.assign('/settings/applications');
+            } catch (error) {
+                toast(error.message, 'error');
+            }
+        };
+    };
+
+    draw();
 }

@@ -1,0 +1,28 @@
+# systemd unit for the Launchpad server (launchpad.monkeforge.org). install.sh installs it to
+# /etc/systemd/system/launchpad-server.service. Settings live in /opt/launchpad-server/.env.
+
+[Unit]
+Description=MonkeForge Launchpad server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=launchpad
+Group=launchpad
+WorkingDirectory=/opt/launchpad-server
+ExecStart=/opt/launchpad-server/LaunchpadServer
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DATA_DIR=/opt/launchpad-server/data
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGINT
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/launchpad-server
+
+[Install]
+WantedBy=multi-user.target

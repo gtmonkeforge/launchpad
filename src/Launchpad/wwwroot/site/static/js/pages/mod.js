@@ -1,9 +1,14 @@
-import { ago, api, brand, canManageMod, app, auth, avatar, bindCopy, capLabels, capTips, date, esc, icon, loaderLabels, modBadges, modIcon, number, onOutside, setTitle, signInUrl, size, toast, userBadges } from '../core.js';
+import { ago, api, brand, canManageMod, app, auth, avatar, bindCopy, capLabels, capTips, date, esc, icon, loaderLabels, choiceBadge, modIcon, number, onOutside, setTitle, signInUrl, size, toast, userBadges } from '../core.js';
 import { consumeReturn, money, openDonate, startCheckout } from '../store.js';
 import { copy, fill } from '../store-copy.js';
 import { bindSubscribe, subscribe, tierCard } from '../tiers.js';
+import { docsPanel } from './mod-docs.js';
+import { extensionsPanel } from './mod-extensions.js';
 
-export async function render(id) {
+const extensionStates = { approved: '', pending: ' · awaiting approval', unapproved: ' · not approved' };
+
+// section and docSlug come from /view/<id>/extensions and /view/<id>/docs/<slug>.
+export async function render(id, section = '', docSlug = '') {
     const channelName = new URLSearchParams(location.search).get('channel') || 'stable';
     const mod = await api('/api/v1/mods/' + encodeURIComponent(id) + '?channel=' + encodeURIComponent(channelName));
     const owner = await canManageMod(mod.author);
@@ -24,24 +29,33 @@ export async function render(id) {
     const options = purchaseOptions(mod);
     const tiers = mod.tiers || [];
     const canDonate = mod.donations_enabled && !owner && mod.status === 'approved';
+    const parent = mod.extends;
+    // Developers can open Docs before switching it on, so they can write pages first.
+    const showDocs = mod.docs_enabled || (owner && (mod.doc_count > 0 || section === 'docs'));
+    const showExtensions = mod.extensions_enabled;
 
     app.innerHTML = `
-        <a class="breadcrumb" href="/browse">${icon('back')}All mods</a>
+        ${parent
+            ? `<a class="breadcrumb" href="/view/${encodeURIComponent(parent.id)}/extensions">${icon('back')}${esc(parent.name)} extensions</a>`
+            : `<a class="breadcrumb" href="/browse">${icon('back')}All mods</a>`}
         ${mod.status !== 'approved' ? `<div class="notice" id="review-notice">${mod.status === 'pending' ? 'This mod is awaiting review before it becomes publicly available.' : 'This mod is not publicly available.'}</div>` : ''}
+        ${owner && parent && mod.status === 'approved' && parent.state !== 'approved' ? `<div class="notice">${parent.state === 'pending'
+            ? `Staff approved this extension. It appears on ${esc(parent.name)}’s Extensions tab once its developers approve it.`
+            : `${esc(parent.name)}’s developers didn’t approve this extension, so it isn’t listed on their Extensions tab or in their marketplace. It’s still available from this page.`}</div>` : ''}
         ${mod.banner ? `<div class="mod-banner"><img src="${esc(mod.banner)}" alt=""></div>` : ''}
         <section class="mod-hero surface">
             ${modIcon(mod)}
             <div>
-                <h1>${esc(mod.name)}</h1>
+                <h1>${esc(mod.name)}${choiceBadge(mod, true)}</h1>
                 <div class="meta-line">
                     <a class="author-chip" href="${esc(mod.author.profile_url)}">${avatar(mod.author, 'sm')}${esc(mod.author.name)}</a>${userBadges(mod.author, true)}
                     <span class="pill">${esc(mod.category)}</span>
+                    ${parent ? `<a class="pill accent" href="/view/${encodeURIComponent(parent.id)}">${icon('layers')}Extension for ${esc(parent.name)}${extensionStates[parent.state] || ''}</a>` : ''}
                     ${mod.channel.name !== 'stable' ? `<span class="pill accent mono">${esc(mod.channel.name)}</span>` : ''}
                     ${mod.visibility !== 'public' ? `<span class="pill">${mod.visibility === 'private' ? 'Private' : 'Code-only'}</span>` : ''}
                     ${mod.gated ? `<span class="pill accent">${mod.owned && !owner ? esc(copy.owned) : esc(mod.price_cents > 0 ? price : fill(copy.tierFrom, { price: money(mod.min_tier_cents, mod.currency) }))}</span>` : ''}
                     ${mod.uses_injector ? `<span class="pill" title="${esc(copy.injectorTip)}">${icon('lock')}${esc(copy.injectorPill)}</span>` : ''}
                 </div>
-                ${mod.badges?.length ? `<div class="badges">${modBadges(mod)}</div>` : ''}
             </div>
             <div class="hero-actions">
                 ${heroAction(mod, current, locked, options)}
@@ -53,6 +67,7 @@ export async function render(id) {
                 </div>
             </div>
         </section>
+        ${mod.modders_choice && mod.choice_note ? `<aside class="choice-note">${icon('trophy')}<div><strong>Modder’s Choice</strong><p>${esc(mod.choice_note)}</p><small>Picked by ${esc(brand.name)} staff</small></div></aside>` : ''}
 
         <div class="stat-strip">
             <div><span>Downloads</span><strong>${number(mod.downloads)}</strong></div>
@@ -66,6 +81,8 @@ export async function render(id) {
             <div>
                 <div class="tabs" role="tablist" aria-label="Mod sections">
                     <button role="tab" id="tab-overview" aria-controls="panel-overview" data-tab="overview">Overview</button>
+                    ${showDocs ? `<button role="tab" id="tab-docs" aria-controls="panel-docs" data-tab="docs">Docs<span class="count" id="doc-count">${mod.doc_count || ''}</span></button>` : ''}
+                    ${showExtensions ? `<button role="tab" id="tab-extensions" aria-controls="panel-extensions" data-tab="extensions">Extensions<span class="count" id="extension-count">${mod.extension_count || ''}</span></button>` : ''}
                     ${tiers.length ? `<button role="tab" id="tab-tiers" aria-controls="panel-tiers" data-tab="tiers">${esc(copy.tiersTab)}<span class="count">${tiers.length}</span></button>` : ''}
                     <button role="tab" id="tab-versions" aria-controls="panel-versions" data-tab="versions">Versions<span class="count">${mod.releases.length}</span></button>
                     <button role="tab" id="tab-community" aria-controls="panel-community" data-tab="community">Community<span class="count" id="comment-count"></span></button>
@@ -76,6 +93,8 @@ export async function render(id) {
                     ${mod.channel.notes ? `<div class="surface panel"><h2>${esc(mod.channel.name)} channel notes</h2><p class="hint">${esc(mod.channel.notes)}</p></div>` : ''}
                     <article class="surface panel"><div class="markdown">${mod.description_html}</div></article>
                 </section>
+                ${showDocs ? '<section class="tab-panel" role="tabpanel" id="panel-docs" aria-labelledby="tab-docs" hidden><p class="hint">Loading…</p></section>' : ''}
+                ${showExtensions ? '<section class="tab-panel" role="tabpanel" id="panel-extensions" aria-labelledby="tab-extensions" hidden><p class="hint">Loading…</p></section>' : ''}
                 ${tiers.length ? `<section class="tab-panel" role="tabpanel" id="panel-tiers" aria-labelledby="tab-tiers" hidden>
                     <p class="hint">${esc(copy.tiersIntro)}</p>
                     <div class="tier-grid">${tiers.map(t => tierCard(t, { canSubscribe: !owner, signInHref: auth.user ? null : signInUrl() })).join('')}</div>
@@ -130,14 +149,48 @@ export async function render(id) {
     bindDownloadMenu();
 
     bindCopy(app);
-    bindTabs();
+    bindTabs(mod, '/view/' + encodeURIComponent(id), section, docSlug);
     bindGallery(mod);
     loadShield(mod, shieldUrl);
     community(mod, base);
 }
 
-function bindTabs() {
+// Docs and Extensions have addresses of their own (/view/<id>/docs/<page>, /view/<id>/extensions) so they can be linked
+// and indexed; the other tabs stay on the mod's address with a #hash. Docs and Extensions load the first time they open.
+function bindTabs(mod, basePath, section, docSlug) {
     const tabs = [...app.querySelectorAll('[data-tab]')];
+    const loaded = new Set();
+    let docPath = docSlug ? '/docs/' + encodeURIComponent(docSlug) : '/docs';
+
+    const address = name => {
+        if (name === 'docs')
+            return basePath + docPath + location.search;
+
+        if (name === 'extensions')
+            return basePath + '/extensions' + location.search;
+
+        return basePath + location.search + (name === 'overview' ? '' : '#' + name);
+    };
+
+    const load = name => {
+        if (loaded.has(name))
+            return;
+
+        loaded.add(name);
+        const panel = app.querySelector('#panel-' + name);
+
+        if (name === 'docs') {
+            docsPanel(panel, mod, basePath, docSlug, slug => {
+                docPath = '/docs/' + encodeURIComponent(slug);
+
+                if (app.querySelector('#tab-docs')?.getAttribute('aria-selected') === 'true')
+                    history.replaceState(null, '', address('docs'));
+            }).catch(error => panel.innerHTML = `<p class="hint">${esc(error.message)}</p>`);
+        }
+
+        if (name === 'extensions')
+            extensionsPanel(panel, mod).catch(error => panel.innerHTML = `<p class="hint">${esc(error.message)}</p>`);
+    };
 
     const select = (name, focus = false) => {
         tabs.forEach(tab => {
@@ -149,7 +202,8 @@ function bindTabs() {
             if (active && focus)
                 tab.focus();
         });
-        history.replaceState(null, '', name === 'overview' ? location.pathname + location.search : '#' + name);
+        load(name);
+        history.replaceState(null, '', address(name));
     };
 
     tabs.forEach((tab, index) => {
@@ -163,7 +217,7 @@ function bindTabs() {
         };
     });
 
-    const initial = location.hash.slice(1);
+    const initial = section || location.hash.slice(1);
     select(tabs.some(t => t.dataset.tab === initial) ? initial : 'overview');
 }
 

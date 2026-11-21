@@ -68,7 +68,7 @@ internal sealed class DpapiSecretStore(string directory) : ISecretStore
     {
         Directory.CreateDirectory(directory);
         var path = SecretStore.FileName(directory, name);
-        var temp = path + ".tmp";
+        var temp = $"{path}.{Guid.NewGuid():N}.tmp";
         File.WriteAllBytes(temp, ProtectedData.Protect(value, Entropy, DataProtectionScope.CurrentUser));
         File.Move(temp, path, true);
     }
@@ -168,7 +168,7 @@ internal sealed class FileSecretStore(string directory) : ISecretStore
             File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
 
         var path = SecretStore.FileName(directory, name);
-        var temp = path + ".tmp";
+        var temp = $"{path}.{Guid.NewGuid():N}.tmp";
         var options = new FileStreamOptions { Mode = FileMode.Create, Access = FileAccess.Write };
 
         if (!OperatingSystem.IsWindows())

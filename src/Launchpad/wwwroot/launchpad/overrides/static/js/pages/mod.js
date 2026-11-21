@@ -1,19 +1,19 @@
 import { render as siteRender } from './mod.site.js';
 import { api, app, esc, icon, toast } from '../core.js';
-import { appState, call, installedMods, loaderNames } from '/_launchpad/bridge.js';
+import { appState, call, installedMods, loaderNames, pageSignal } from '/_launchpad/bridge.js';
 
 export { shieldRing, shieldState } from './mod.site.js';
 
-let refresh = null;
+// section and docSlug come from /view/<id>/extensions and /view/<id>/docs/<slug>.
+export async function render(id, section, docSlug) {
+    const signal = pageSignal();
+    await siteRender(id, section, docSlug);
 
-export async function render(id) {
-    await siteRender(id);
+    if (signal.aborted)
+        return;
+
     await enhance(id);
-
-    if (!refresh) {
-        refresh = () => enhance(id).catch(() => {});
-        window.addEventListener('launchpad:mods', refresh);
-    }
+    window.addEventListener('launchpad:mods', () => enhance(id).catch(() => {}), { signal });
 }
 
 async function enhance(id) {

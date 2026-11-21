@@ -8,7 +8,7 @@ using Launchpad.Injector;
 
 namespace Launchpad.Mods;
 
-public sealed record InstalledView(string Guid, string Name, string Version, string Loader, string Channel, bool Injector, int Files);
+public sealed record InstalledView(string Guid, string Name, string Version, string Loader, string Channel, bool Injector, int Files, bool Custom);
 
 public sealed record UpdateInfo(string Guid, string Installed, string? Latest, bool Available);
 
@@ -47,7 +47,7 @@ public sealed partial class ModManager(ForgeClient forge, PayloadClient payloads
         Manifest manifest = await Manifest.ReadAsync(path!);
         return manifest.Installed
             .Where(mod => !LoaderInstaller.IsInternalRecord(mod.Guid))
-            .Select(mod => new InstalledView(mod.Guid, mod.Name, mod.Version, mod.EffectiveLoader.Id(), mod.Channel ?? "stable", mod.Injector, mod.Files.Count))
+            .Select(View)
             .OrderBy(mod => mod.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
@@ -108,6 +108,9 @@ public sealed partial class ModManager(ForgeClient forge, PayloadClient payloads
         Manifest manifest = await Manifest.ReadAsync(game);
         InstalledMod? previous = manifest.Find(realGuid);
 
+        if (previous is { Custom: true })
+            throw new UserFacingException($"A custom mod named {previous.Name} is in the way. Remove it from your Library first.");
+
         if (previous != null && previous.EffectiveLoader != loader)
             throw new UserFacingException($"{name} is installed for {previous.EffectiveLoader.DisplayName()}. Remove it first, or switch back to {previous.EffectiveLoader.DisplayName()} in Settings.");
 
@@ -157,6 +160,79 @@ public sealed partial class ModManager(ForgeClient forge, PayloadClient payloads
         return View(record);
     });
 
+    public const long MaxCustomBytes = 64L * 1024 * 1024;
+    public const string CustomPrefix = "custom.";
+
+    public Task<InstalledView> InstallFileAsync(string fileName, byte[] bytes, CancellationToken ct) => LockedAsync(async () =>
+    {
+        var game = Game();
+        ModLoader loader = settings().Loader;
+
+        if (!fileName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            throw new UserFacingException("Only .dll files can be installed as custom mods.");
+
+        if (bytes.Length == 0 || bytes.Length > MaxCustomBytes)
+            throw new UserFacingException($"{Path.GetFileName(fileName)} is empty or too large to install.");
+
+        (var assemblyName, var version) = ReadAssembly(bytes, Path.GetFileName(fileName));
+        var file = Archive.SafeFileName(Path.GetFileName(fileName), assemblyName + ".dll");
+
+        if (!file.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            file += ".dll";
+
+        var slug = SlugPattern().Replace(Path.GetFileNameWithoutExtension(file), "-").Trim('-', '.');
+        var guid = CustomPrefix + (slug.Length is > 0 and <= 100 ? slug : "mod");
+        var record = new InstalledMod { Guid = guid, Name = assemblyName, Version = version, Loader = loader, Custom = true };
+
+        Manifest manifest = await Manifest.ReadAsync(game);
+        InstalledMod? previous = manifest.Find(guid);
+
+        if (previous is { Custom: false })
+            throw new UserFacingException($"{file} conflicts with {previous.Name}, which was installed from MonkeForge.");
+
+        if (previous != null && previous.EffectiveLoader != loader)
+            throw new UserFacingException($"{file} is installed for {previous.EffectiveLoader.DisplayName()}. Remove it first, or switch back to {previous.EffectiveLoader.DisplayName()} in Settings.");
+
+        var entries = new Dictionary<string, byte[]>
+        {
+            [(loader == ModLoader.MelonLoader ? "Mods/" : $"BepInEx/plugins/{guid}/") + file] = bytes,
+        };
+
+        RequireGameClosed();
+        await loaders.EnsureAsync(game, loader, false, ct);
+        progress($"Installing {assemblyName}…");
+        manifest = await Manifest.ReadAsync(game);
+        await ModFiles.ApplyAsync(game, manifest, record, entries);
+        return View(record);
+    });
+
+    [GeneratedRegex("[^A-Za-z0-9._-]+")]
+    private static partial Regex SlugPattern();
+
+    private static (string Name, string Version) ReadAssembly(byte[] bytes, string fileName)
+    {
+        try
+        {
+            using var pe = new System.Reflection.PortableExecutable.PEReader(new MemoryStream(bytes));
+
+            if (!pe.HasMetadata)
+                throw new UserFacingException($"{fileName} isn't a .NET assembly, so it can't be loaded as a mod.");
+
+            System.Reflection.Metadata.MetadataReader metadata = System.Reflection.Metadata.PEReaderExtensions.GetMetadataReader(pe);
+
+            if (!metadata.IsAssembly)
+                throw new UserFacingException($"{fileName} isn't a .NET assembly, so it can't be loaded as a mod.");
+
+            System.Reflection.Metadata.AssemblyDefinition definition = metadata.GetAssemblyDefinition();
+            var name = metadata.GetString(definition.Name);
+            return (string.IsNullOrWhiteSpace(name) ? Path.GetFileNameWithoutExtension(fileName) : name, definition.Version.ToString(3));
+        }
+        catch (Exception ex) when (ex is BadImageFormatException or InvalidOperationException)
+        {
+            throw new UserFacingException($"{fileName} isn't a valid .NET assembly, so it can't be loaded as a mod.");
+        }
+    }
+
     public Task<bool> UninstallAsync(string guid) => LockedAsync(async () =>
     {
         if (LoaderInstaller.IsInternalRecord(guid))
@@ -186,6 +262,9 @@ public sealed partial class ModManager(ForgeClient forge, PayloadClient payloads
 
         foreach (InstalledView mod in await ListAsync())
         {
+            if (mod.Custom)
+                continue;
+
             string? latest = null;
 
             try
@@ -246,5 +325,5 @@ public sealed partial class ModManager(ForgeClient forge, PayloadClient payloads
         return bytes;
     }
 
-    private static InstalledView View(InstalledMod mod) => new(mod.Guid, mod.Name, mod.Version, mod.EffectiveLoader.Id(), mod.Channel ?? "stable", mod.Injector, mod.Files.Count);
+    private static InstalledView View(InstalledMod mod) => new(mod.Guid, mod.Name, mod.Version, mod.EffectiveLoader.Id(), mod.Channel ?? "stable", mod.Injector, mod.Files.Count, mod.Custom);
 }

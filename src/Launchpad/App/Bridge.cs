@@ -7,7 +7,7 @@ using Launchpad.Mods;
 
 namespace Launchpad.App;
 
-public sealed class Bridge(LaunchpadApp app, Func<string, Task<string?>> pickFolder)
+public sealed class Bridge(LaunchpadApp app, Func<string, Task<string?>> pickFolder, Action quitForUpdate)
 {
     private CancellationTokenSource? _signIn;
 
@@ -30,6 +30,24 @@ public sealed class Bridge(LaunchpadApp app, Func<string, Task<string?>> pickFol
             case "auth.signOut":
                 await app.Forge.LogoutAsync(ct);
                 return null;
+
+            case "update.state":
+                return app.Updates.State;
+
+            case "update.check":
+                return await app.Updates.CheckAsync(false, ct);
+
+            case "update.install":
+                if (!app.Updates.LaunchInstaller(relaunch: true))
+                    throw new UserFacingException("There’s no downloaded update to install. Check for updates and try again.");
+
+                quitForUpdate();
+                return null;
+
+            case "update.setAuto":
+                app.Settings.AutoUpdate = args.Bool("enabled");
+                await app.Settings.SaveAsync();
+                return new { auto_update = app.Settings.AutoUpdate };
 
             case "shell.open":
                 LaunchpadApp.OpenExternal(Arg("url"));
@@ -109,6 +127,27 @@ public sealed class Bridge(LaunchpadApp app, Func<string, Task<string?>> pickFol
             case "mods.install":
                 return await app.Mods.InstallAsync(Arg("guid"), args.Str("channel"), ct);
 
+            case "mods.installFile":
+            {
+                var data = Arg("data");
+
+                if (data.Length > (ModManager.MaxCustomBytes + 2) / 3 * 4)
+                    throw new UserFacingException("That file is too large to install.");
+
+                byte[] bytes;
+
+                try
+                {
+                    bytes = Convert.FromBase64String(data);
+                }
+                catch (FormatException)
+                {
+                    throw new UserFacingException("Launchpad couldn't read that file. Try again.");
+                }
+
+                return await app.Mods.InstallFileAsync(Arg("name"), bytes, ct);
+            }
+
             case "mods.uninstall":
                 return await app.Mods.UninstallAsync(Arg("guid"));
 
@@ -125,7 +164,7 @@ public sealed class Bridge(LaunchpadApp app, Func<string, Task<string?>> pickFol
         _signIn?.Cancel();
         using var cancel = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _signIn = cancel;
-        using var flow = new NativeSignIn(app.Forge.BaseUri);
+        using OAuthSignIn flow = app.Forge.StartSignIn();
 
         try
         {
@@ -175,6 +214,8 @@ public sealed class Bridge(LaunchpadApp app, Func<string, Task<string?>> pickFol
             server = app.Forge.BaseUri.GetLeftPart(UriPartial.Authority),
             user = app.Forge.User,
             restore_error = app.Forge.RestoreError,
+            update = app.Updates.State,
+            auto_update = app.Settings.AutoUpdate,
             settings = new { loader = app.Settings.Loader.Id(), accent = app.Settings.Accent, game_path = game },
             game = new
             {

@@ -28,7 +28,7 @@ function login() {
 
     app.innerHTML = `<section class="signin-card surface"><span class="brand-mark" aria-hidden="true"></span>
         <h1>Sign in to MonkeForge</h1>
-        <p>Your browser opens monkeforge.org, where you sign in with Discord, a passkey, or your password. Launchpad picks it up from there.</p>
+        <p>Your browser opens monkeforge.org, where you sign in with Discord, a passkey, or your password, then allow Launchpad to use your account. Launchpad picks it up from there.</p>
         <div class="signin-actions" id="signin-actions"><button class="button large" id="sign-in">${icon('user')}Sign in with your browser</button>
             <a class="button subtle large" data-lp-external href="${esc((launchpad.forge || 'https://monkeforge.org') + '/signup')}">Create an account</a></div>
         <p class="auth-status" id="signin-status" role="status"></p></section>`;

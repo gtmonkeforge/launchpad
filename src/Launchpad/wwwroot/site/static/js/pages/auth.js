@@ -1,16 +1,30 @@
-import { api, app, auth, brand, esc, icon, setTitle, signInNext, toast } from '../core.js';
+import { api, app, appLogo, auth, brand, esc, icon, safeNext, setTitle, toast, verifiedMark } from '../core.js';
 import { cancelled, passkeysSupported, signInWithPasskey } from '../passkeys.js';
 
-const nativeFields = ['redirect_uri', 'code_challenge', 'code_challenge_method', 'state'];
 const params = new URLSearchParams(location.search);
+const next = safeNext(params.get('next'));
 
-// A desktop app opens /login with its PKCE values, the same ones /auth/discord takes. They ride along with every sign-in method.
-const native = nativeFields.some(field => params.has(field)) ? Object.fromEntries(nativeFields.map(field => [field, params.get(field) || ''])) : null;
-const next = signInNext.includes(params.get('next')) ? params.get('next') : '/browse';
+// Signing in on the way to an app's authorization screen: name the app, with its verified checkmark, above the form.
+const authorizing = next.startsWith('/oauth/authorize?');
 
 function carried(extra = {}) {
-    const query = new URLSearchParams({ next, ...(native || {}), ...extra });
+    const query = new URLSearchParams({ next, ...extra });
     return query.toString();
+}
+
+async function showApp(root) {
+    const slot = root.querySelector('#auth-app');
+
+    if (!slot)
+        return;
+
+    try {
+        const info = await api('/api/v1/oauth/authorize' + next.slice('/oauth/authorize'.length));
+
+        if (info.app)
+            slot.innerHTML = `<p class="notice auth-app">${appLogo(info.app, 'sm')}<span>Sign in to continue to <strong>${esc(info.app.name)}</strong>${info.app.verified ? verifiedMark() : ''}</span></p>`;
+    } catch {
+    }
 }
 
 function card(title, inner) {
@@ -69,7 +83,7 @@ export async function render(page) {
 function login() {
     setTitle('Sign in');
 
-    if (auth.user && !native) {
+    if (auth.user) {
         location.replace(next);
         return;
     }
@@ -86,7 +100,7 @@ function login() {
     // The password form leads; Discord and passkeys are the alternatives underneath it.
     app.innerHTML = card(`Sign in to ${brand.name}`, `
         ${tabs('login')}
-        ${native ? '<p class="notice">You’re signing in to a desktop app. Once you’re in, you’ll be sent back to it.</p>' : ''}
+        ${authorizing ? '<div id="auth-app"><p class="notice">Sign in to continue to an app. You’ll choose what it can access next.</p></div>' : ''}
         ${params.get('verified') ? '<p class="notice">Your email is confirmed. Sign in to continue.</p>' : ''}
         ${password}
         <p class="auth-status" id="auth-status" role="status" aria-live="polite"></p>
@@ -95,6 +109,7 @@ function login() {
         ${!discord && !password ? '<p class="notice">Sign-in isn’t set up on this server yet. The site owner needs to add Discord or email settings.</p>' : ''}`);
 
     bindReveal(app);
+    showApp(app);
     const done = result => location.assign(result.redirect || next);
 
     app.querySelector('#passkey-login')?.addEventListener('click', async event => {
@@ -103,7 +118,7 @@ function login() {
         status(app, '', '');
 
         try {
-            done(await signInWithPasskey({ next, native }));
+            done(await signInWithPasskey({ next }));
         } catch (error) {
             if (!cancelled(error))
                 status(app, error.message);
@@ -128,7 +143,7 @@ function login() {
         status(app, '', '');
 
         try {
-            done(await api('/api/v1/auth/login', { method: 'POST', json: { login: form.login.value.trim(), password: form.password.value, next, native } }));
+            done(await api('/api/v1/auth/login', { method: 'POST', json: { login: form.login.value.trim(), password: form.password.value, next } }));
         } catch (error) {
             status(app, error.message);
             busy(form, false);
@@ -140,7 +155,7 @@ function login() {
 function signup() {
     setTitle('Create an account');
 
-    if (auth.user && !native) {
+    if (auth.user) {
         location.replace(next);
         return;
     }

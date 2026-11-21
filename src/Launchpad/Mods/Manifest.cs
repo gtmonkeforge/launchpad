@@ -41,6 +41,9 @@ public sealed class InstalledMod
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Injector { get; set; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Custom { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, object?>? Extra { get; set; }
 

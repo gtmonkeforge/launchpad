@@ -11,6 +11,9 @@ public sealed class Settings
     public Dictionary<string, string> Channels { get; set; } = [];
     public string? GamePath { get; set; }
 
+    // Check for Launchpad updates in the background, download them, and install when Launchpad closes.
+    public bool AutoUpdate { get; set; } = true;
+
     [JsonExtensionData]
     public Dictionary<string, object?>? Extra { get; set; }
 

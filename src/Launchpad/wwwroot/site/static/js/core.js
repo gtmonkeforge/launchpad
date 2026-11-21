@@ -80,6 +80,10 @@ const paths = {
     ban: '<circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/>',
     megaphone: '<path d="M4 10v4a1 1 0 0 0 1 1h2l8 4V5L7 9H5a1 1 0 0 0-1 1ZM18 9.5a3.5 3.5 0 0 1 0 5M7 15l1.5 5h2.5L10 15.5"/>',
     tray: '<path d="M3 13h5l1.5 2.5h5L16 13h5M5 5h14l2 8v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Z"/>',
+    hammer: '<g transform="translate(-.85 .85) rotate(45 12 12)"><rect x="7.5" y="4" width="9" height="4.5" rx="1"/><path d="M12 8.5V22"/></g>',
+    hammers: '<g transform="translate(0 1) rotate(40 12 12)"><rect x="8.75" y="3" width="6.5" height="3.6" rx=".8"/><path d="M12 6.6V20.5"/></g><g transform="translate(0 1) rotate(-40 12 12)"><rect x="8.75" y="3" width="6.5" height="3.6" rx=".8"/><path d="M12 6.6V20.5"/></g>',
+    medal: '<path d="M8.5 9.6 5.5 3h4l2.5 5.2M15.5 9.6 18.5 3h-4l-1.4 2.9"/><circle cx="12" cy="15" r="5.5"/><circle cx="12" cy="15" r="2.25"/>',
+    trophy: '<path d="M7.5 4h9v5a4.5 4.5 0 0 1-9 0Z"/><path d="M7.5 6H5.75a2 2 0 0 0 0 4h2.1M16.5 6h1.75a2 2 0 0 1 0 4h-2.1"/><path d="M12 13.5v3.5"/><path d="M8.5 20h7M9.5 20v-1.5a1.5 1.5 0 0 1 1.5-1.5h2a1.5 1.5 0 0 1 1.5 1.5V20"/>',
 };
 
 export function icon(name, extra = '') {
@@ -166,18 +170,52 @@ export function modIcon(mod) {
 }
 
 const badgeTips = {
-    admin: `${brand.name} Staff`,
+    staff: `${brand.name} Staff`,
+    developer: `${brand.name} Developer. Works on the site itself.`,
     verified: `This user has been verified by ${brand.name} staff as a trustable, reputable mod developer. They are who they say they are.`,
+    choice: `Modder’s Choice. Picked by ${brand.name} staff.`,
 };
 
+// Badges are icon-only; the name lives in the tooltip and the accessible label.
 // Badges inside links can't be focusable, so only standalone badges get a tab stop for their tooltip.
-export function userBadges(user, focusable = false) {
-    const badge = (kind, glyph, label) => `<span class="user-badge ${kind}"${focusable ? ' tabindex="0"' : ''}>${icon(glyph)}${label}<span class="tip" role="tooltip">${badgeTips[kind]}</span></span>`;
-    return (user.is_admin ? badge('admin', 'admin', 'Admin') : '') + (user.is_verified ? badge('verified', 'check', 'Verified') : '');
+function badge(kind, glyph, focusable, tip = badgeTips[kind]) {
+    return `<span class="user-badge ${kind}" role="img" aria-label="${esc(tip)}"${focusable ? ' tabindex="0"' : ''}>${icon(glyph)}<span class="tip" aria-hidden="true">${esc(tip)}</span></span>`;
 }
 
-export function modBadges(mod) {
-    return (mod.badges || []).map(badge => `<span class="forge-badge">✦ ${esc(badge)}</span>`).join('');
+// Medals are named by staff. A creator's medals also say which mod won them. Past three, the rest share one "+N" badge.
+const medalTip = m => m.mod_name ? `${m.name} · ${m.mod_name}` : m.name;
+
+function medalBadges(medals, focusable) {
+    if (!medals?.length)
+        return '';
+
+    const shown = medals.length > 3 ? medals.slice(0, 2) : medals;
+    const rest = medals.slice(shown.length);
+    const more = rest.length ? `<span class="user-badge medal more" role="img" aria-label="${esc(rest.map(medalTip).join(', '))}"${focusable ? ' tabindex="0"' : ''}>+${rest.length}<span class="tip" aria-hidden="true">${rest.map(m => esc(medalTip(m))).join('<br>')}</span></span>` : '';
+    return shown.map(m => badge('medal', 'medal', focusable, medalTip(m))).join('') + more;
+}
+
+// Developer replaces the Staff hammer rather than sitting beside it.
+export function userBadges(user, focusable = false) {
+    const role = user.is_developer ? badge('developer', 'hammers', focusable) : user.is_admin ? badge('staff', 'hammer', focusable) : '';
+    return role + (user.is_verified ? badge('verified', 'check', focusable) : '') + medalBadges(user.medals, focusable);
+}
+
+// The mod's own awards: Modder's Choice, then its medals.
+export function choiceBadge(mod, focusable = false) {
+    return (mod.modders_choice ? badge('choice', 'trophy', focusable) : '') + medalBadges(mod.medals, focusable);
+}
+
+// OAuth apps: a square logo (or its first letter), and the checkmark staff give verified apps.
+export function appLogo(app, sizeClass = '') {
+    if (app.logo)
+        return `<img class="app-logo ${sizeClass}" src="${esc(app.logo)}" alt="" loading="lazy">`;
+
+    return `<span class="app-logo ${sizeClass}" aria-hidden="true">${esc(initials(app.name).slice(0, 1))}</span>`;
+}
+
+export function verifiedMark(focusable = true) {
+    return `<span class="app-verified"${focusable ? ' tabindex="0"' : ''} aria-label="Verified app">${icon('check')}<span class="tip" role="tooltip">Verified by ${esc(brand.name)} staff. They checked who runs this app.</span></span>`;
 }
 
 export function plainText(markdown) {
@@ -200,9 +238,8 @@ export function modCard(mod) {
 
     return `<a class="mod-card" href="${esc(modUrl(mod))}">
         <div class="card-top">${modIcon(mod)}${status}</div>
-        <h3>${esc(mod.name)}</h3>
+        <h3>${esc(mod.name)}${choiceBadge(mod)}</h3>
         <div class="by">by ${esc(mod.author.name)} ${userBadges(mod.author)}</div>
-        ${mod.badges?.length ? `<div class="badges">${modBadges(mod)}</div>` : ''}
         <p class="summary">${esc(plainText(mod.description))}</p>
         <div class="card-foot"><span>${icon('download')}${number(mod.downloads)}</span><span>${icon('clock')}${esc(ago(mod.updated_at))}</span><span class="spacer"></span>${mod.gated ? `<span class="price">${esc(mod.owned && mod.author.id !== auth.user?.id ? storeCopy.cardOwned : mod.price_cents > 0 ? money(mod.price_cents, mod.currency) : storeCopy.tierFrom.replace('{price}', money(mod.min_tier_cents, mod.currency)))}</span>` : ''}<span>v${esc(mod.current_version || '—')}</span></div>
     </a>`;
@@ -299,6 +336,17 @@ export function applyAccent(color) {
 }
 
 export const signInNext = ['/browse', '/upload', '/profile', '/admin', '/settings', '/setup'];
+
+// Where sign-in may return to: one of the pages above, or an app's authorization screen (matches AuthEndpoints.SafeNext).
+export function safeNext(value, fallback = '/browse') {
+    if (signInNext.includes(value))
+        return value;
+
+    if (typeof value === 'string' && value.startsWith('/oauth/authorize?') && value.length <= 4096 && !/[\\#\s\x00-\x1f]/.test(value))
+        return value;
+
+    return fallback;
+}
 
 export function signInUrl(next = location.pathname) {
     return '/login?next=' + encodeURIComponent(signInNext.includes(next) ? next : '/browse');
